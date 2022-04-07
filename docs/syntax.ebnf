@@ -12,7 +12,7 @@ arm ::= [ identifier , "@" ] , expression , ">" , expression , "," ;
 let ::= "let" , { identifier , "=" , expression , "," } , "in" , expression ;
 function ::= identifier , ":" , expression ;
 
-identifier ::= alphabetic, { alphabetic | digit | "_" } ;
+identifier ::= alphabetic, { alphanumeric | "_" } ;
 symbol ::= "'" , { all - "'" } , "'" ;
 
 alphanumeric = alphabetic | numeric
