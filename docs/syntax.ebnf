@@ -1,0 +1,26 @@
+expression ::= apply , { "|" , apply } ;
+apply ::= term , { term } ;
+term ::= "(" , expression , ")"
+       | match
+       | let
+       | function
+       | identifier
+       | symbol ;
+
+match ::= "match" , expression , "{" , { arm } , "}" ;
+arm ::= [ identifier , "@" ] , expression , ">" , expression , "," ;
+let ::= "let" , { identifier , "=" , expression , "," } , "in" , expression ;
+function ::= identifier , ":" , expression ;
+
+identifier ::= alphabetic, { alphabetic | digit | "_" } ;
+symbol ::= "'" , { all - "'" } , "'" ;
+
+alphanumeric = alphabetic | numeric
+alphabetic ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k"
+             | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v"
+             | "w" | "x" | "y" | "z" | "A" | "B" | "C" | "D" | "E" | "F" | "G" 
+             | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R"
+             | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z" ;
+numeric ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+
+all = ? all characters, even whitespace ? ;
