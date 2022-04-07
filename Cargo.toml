@@ -2,5 +2,7 @@
 name = "tmc"
 version = "0.1.0"
 edition = "2021"
+authors = ["Ricardo Antunes <me@riscadoa.com>"]
 
 [dependencies]
+clap = { version = "3.0", features = ["derive"] }
