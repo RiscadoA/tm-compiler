@@ -22,6 +22,13 @@ pub enum Token {
     Catch,
 }
 
+#[derive(Debug, Clone)]
+pub struct TokenLoc {
+    line: usize,
+    col: usize,
+    import: Option<String>,
+}
+
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -41,6 +48,26 @@ impl fmt::Display for Token {
             Token::Comma => write!(f, ","),
             Token::Pipe => write!(f, "|"),
             Token::Catch => write!(f, "@"),
+        }
+    }
+}
+
+impl TokenLoc {
+    pub fn new(line: usize, col: usize, import: Option<String>) -> Self {
+        Self { line, col, import }
+    }
+}
+
+impl fmt::Display for TokenLoc {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(import) = &self.import {
+            write!(
+                f,
+                "line {}, column {}, import {}",
+                self.line, self.col, import
+            )
+        } else {
+            write!(f, "line {}, column {}", self.line, self.col)
         }
     }
 }
