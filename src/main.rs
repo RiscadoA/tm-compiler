@@ -20,8 +20,7 @@ fn main() {
     let args = Cli::parse();
     let tokens = lexer::tokenize_from_file(&args.path, &HashMap::new(), None)
         .map_err(|e| format!("Lexer error: {}", e))
-        .unwrap()
-        .0;
-    tokens.iter().for_each(|tok| print!("{} ", tok));
+        .unwrap();
+    tokens.iter().for_each(|(tok, _)| print!("{} ", tok));
     println!("");
 }

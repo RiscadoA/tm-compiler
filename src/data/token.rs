@@ -24,9 +24,9 @@ pub enum Token {
 
 #[derive(Debug, Clone)]
 pub struct TokenLoc {
-    line: usize,
-    col: usize,
-    import: Option<String>,
+    pub line: usize,
+    pub col: usize,
+    pub import: Option<String>,
 }
 
 impl fmt::Display for Token {
@@ -49,12 +49,6 @@ impl fmt::Display for Token {
             Token::Pipe => write!(f, "|"),
             Token::Catch => write!(f, "@"),
         }
-    }
-}
-
-impl TokenLoc {
-    pub fn new(line: usize, col: usize, import: Option<String>) -> Self {
-        Self { line, col, import }
     }
 }
 

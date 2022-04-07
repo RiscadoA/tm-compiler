@@ -5,14 +5,11 @@ use std::collections::HashMap;
 struct State<'a, 'b> {
     dir: Option<&'a std::path::Path>,
     lib: &'b HashMap<String, String>,
-    import_name: Option<String>,
-    toks: Vec<Token>,
-    toks_loc: Vec<TokenLoc>,
+    toks: Vec<(Token, TokenLoc)>,
+    loc: TokenLoc,
     acc: String,
     in_quotes: bool,
     is_import: bool,
-    line: usize,
-    col: usize,
 }
 
 // All single character punctuation characters.
@@ -45,13 +42,13 @@ pub fn tokenize(
     dir: Option<&std::path::Path>,
     lib: &HashMap<String, String>,
     import_name: Option<String>,
-) -> Result<(Vec<Token>, Vec<TokenLoc>), String> {
+) -> Result<Vec<(Token, TokenLoc)>, String> {
     let mut state = State::new(dir, lib, import_name);
     for chr in src.chars() {
         state.push(chr)?;
     }
     state.consume()?;
-    Ok((state.toks, state.toks_loc))
+    Ok(state.toks)
 }
 
 /// Loads a string from a file and runs tokenize() on it.
@@ -59,7 +56,7 @@ pub fn tokenize_from_file(
     path: &std::path::Path,
     lib: &HashMap<String, String>,
     import_name: Option<String>,
-) -> Result<(Vec<Token>, Vec<TokenLoc>), String> {
+) -> Result<Vec<(Token, TokenLoc)>, String> {
     let src = std::fs::read_to_string(path).unwrap();
     tokenize(&src, path.parent(), lib, import_name)
 }
@@ -74,14 +71,15 @@ impl<'a, 'b> State<'a, 'b> {
         Self {
             dir,
             lib,
-            import_name,
             toks: Vec::new(),
-            toks_loc: Vec::new(),
+            loc: TokenLoc {
+                line: 1,
+                col: 1,
+                import: import_name,
+            },
             acc: String::new(),
             in_quotes: false,
             is_import: false,
-            line: 1,
-            col: 1,
         }
     }
 
@@ -89,9 +87,8 @@ impl<'a, 'b> State<'a, 'b> {
     fn import(&mut self, path: String) -> Result<(), String> {
         match self.lib.get(&path) {
             Some(src) => {
-                let res = tokenize(src, None, self.lib, Some(path.clone()))?;
-                self.toks.extend(res.0);
-                self.toks_loc.extend(res.1);
+                self.toks
+                    .extend(tokenize(src, None, self.lib, Some(path.clone()))?);
                 Ok(())
             }
             None => {
@@ -100,17 +97,13 @@ impl<'a, 'b> State<'a, 'b> {
                     let mut p = dir.to_path_buf();
                     p.push(&path);
                     if p.exists() {
-                        let res = tokenize_from_file(&p, self.lib, Some(path.clone()))?;
-                        self.toks.extend(res.0);
-                        self.toks_loc.extend(res.1);
+                        self.toks
+                            .extend(tokenize_from_file(&p, self.lib, Some(path.clone()))?);
                         return Ok(());
                     }
                 }
 
-                Err(format!(
-                    "Couldn't import file {} at line {} and column {}",
-                    path, self.line, self.col
-                ))
+                Err(format!("Couldn't import file {} at {}", path, self.loc))
             }
         }
     }
@@ -127,33 +120,33 @@ impl<'a, 'b> State<'a, 'b> {
                 }
 
                 self.in_quotes = false;
-                self.col += self.acc.len();
+                self.loc.col += self.acc.len();
                 self.acc.clear();
             } else {
                 if chr == '\n' {
                     return Err(format!(
-                        "Found new line inside quotes at line {}, which isn't supported",
-                        self.line
+                        "Found new line inside quotes at {}, which isn't supported",
+                        self.loc
                     ));
                 }
                 self.acc.push(chr);
             }
         } else if chr == '\'' {
             self.consume()?;
-            self.col += 1;
+            self.loc.col += 1;
             self.in_quotes = true;
         } else if chr.is_whitespace() {
             self.consume()?;
             if chr == '\n' {
-                self.col = 1;
-                self.line += 1;
+                self.loc.col = 1;
+                self.loc.line += 1;
             } else {
-                self.col += 1;
+                self.loc.col += 1;
             }
         } else if let Some(&(_, tok)) = PUNCTUATION.iter().find(|(c, _)| c == &chr) {
             self.consume()?;
             self.push_tok(tok.clone());
-            self.col = 1;
+            self.loc.col = 1;
         } else {
             self.acc.push(chr);
         }
@@ -168,8 +161,7 @@ impl<'a, 'b> State<'a, 'b> {
             if self.is_import {
                 return Err(format!(
                     "Expected import path after import keyword at {}, instead found '{}'",
-                    TokenLoc::new(self.line, self.col, self.import_name.clone()),
-                    self.acc
+                    self.loc, self.acc
                 ));
             } else if self.acc == "import" {
                 self.is_import = true;
@@ -180,22 +172,19 @@ impl<'a, 'b> State<'a, 'b> {
             } else {
                 return Err(format!(
                     "Unknown keyword or invalid identifier '{}' found at {}",
-                    self.acc,
-                    TokenLoc::new(self.line, self.col, self.import_name.clone())
+                    self.acc, self.loc
                 ));
             }
         }
 
-        self.col += self.acc.len();
+        self.loc.col += self.acc.len();
         self.acc.clear();
         Ok(())
     }
 
     // Pushes a new token to the output.
     fn push_tok(&mut self, tok: Token) {
-        self.toks.push(tok);
-        self.toks_loc
-            .push(TokenLoc::new(self.line, self.col, self.import_name.clone()));
+        self.toks.push((tok, self.loc.clone()));
     }
 }
 
@@ -212,7 +201,11 @@ mod tests {
 
     #[test]
     fn test_tokenize_empty() {
-        let tokens = tokenize("", None, &HashMap::new(), None).unwrap().0;
+        let tokens = tokenize("", None, &HashMap::new(), None)
+            .unwrap()
+            .into_iter()
+            .map(|t| t.0)
+            .collect::<Vec<_>>();
         assert_eq!(tokens.len(), 0);
     }
 
@@ -227,7 +220,9 @@ mod tests {
             None,
         )
         .unwrap()
-        .0;
+        .into_iter()
+        .map(|t| t.0)
+        .collect::<Vec<_>>();
         assert_eq!(
             tokens,
             &[
@@ -243,7 +238,9 @@ mod tests {
     fn test_identifiers() {
         let tokens = tokenize("_ a a_ b1 c_0", None, &HashMap::new(), None)
             .unwrap()
-            .0;
+            .into_iter()
+            .map(|t| t.0)
+            .collect::<Vec<_>>();
         assert_eq!(
             tokens,
             &[
@@ -285,7 +282,9 @@ mod tests {
             None,
         )
         .unwrap()
-        .0;
+        .into_iter()
+        .map(|t| t.0)
+        .collect::<Vec<_>>();
         assert_eq!(
             tokens,
             &[
