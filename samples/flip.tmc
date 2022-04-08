@@ -1,0 +1,11 @@
+import 'test.tmc'
+let
+    flip = x: match x {
+        '0' > '1',
+        '1' > '0',
+    },
+in
+    Y f: t: match get t {
+        x @ '0' | '1' > f (next (set x t)),
+        any           > t,
+    }
