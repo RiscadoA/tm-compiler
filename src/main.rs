@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 mod data;
 mod lexer;
+mod parser;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -18,9 +19,18 @@ struct Cli {
 
 fn main() {
     let args = Cli::parse();
-    let tokens = lexer::tokenize_from_file(&args.path, &HashMap::new(), None)
+    // Tokenize input.
+    let toks = lexer::tokenize_from_file(&args.path, &HashMap::new(), None)
         .map_err(|e| format!("Lexer error: {}", e))
         .unwrap();
-    tokens.iter().for_each(|(tok, _)| print!("{} ", tok));
+    println!("----------- Tokens -----------");
+    toks.iter().for_each(|(tok, _)| print!("{} ", tok));
     println!("");
+
+    // Parse the tokens and generate the abstract syntax tree.
+    println!("------------ AST -------------");
+    let ast = parser::parse(toks)
+        .map_err(|e| format!("Parser error: {}", e))
+        .unwrap();
+    println!("{}", ast);
 }
