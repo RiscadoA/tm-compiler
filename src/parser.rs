@@ -333,3 +333,84 @@ fn expect_token<'a>(
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_empty() {
+        let tokens = Vec::new();
+        let _ast = parse(tokens)
+            .expect_err("Expected expression but found EOF (while parsing root expression)");
+    }
+
+    #[test]
+    fn test_parse_precedence() {
+        let (tokens, dummy) = insert_dummy_locs(vec![
+            Token::LParenthesis,
+            Token::Identifier("x".to_owned()),
+            Token::Identifier("y".to_owned()),
+            Token::Pipe,
+            Token::Identifier("a".to_owned()),
+            Token::Identifier("b".to_owned()),
+            Token::RParenthesis,
+            Token::Identifier("c".to_owned()),
+        ]);
+
+        let ast = parse(tokens).unwrap();
+        assert_eq!(
+            ast,
+            Exp(
+                Node::Application {
+                    func: Box::new(Exp(
+                        Node::Union {
+                            lhs: Box::new(Exp(
+                                Node::Application {
+                                    func: Box::new(Exp(
+                                        Node::Identifier("x".to_owned()),
+                                        dummy.clone()
+                                    )),
+                                    arg: Box::new(Exp(
+                                        Node::Identifier("y".to_owned()),
+                                        dummy.clone()
+                                    )),
+                                },
+                                dummy.clone(),
+                            )),
+                            rhs: Box::new(Exp(
+                                Node::Application {
+                                    func: Box::new(Exp(
+                                        Node::Identifier("a".to_owned()),
+                                        dummy.clone()
+                                    )),
+                                    arg: Box::new(Exp(
+                                        Node::Identifier("b".to_owned()),
+                                        dummy.clone()
+                                    )),
+                                },
+                                dummy.clone(),
+                            )),
+                        },
+                        dummy.clone(),
+                    )),
+                    arg: Box::new(Exp(Node::Identifier("c".to_owned()), dummy.clone())),
+                },
+                dummy,
+            )
+        );
+    }
+
+    fn insert_dummy_locs(toks: Vec<Token>) -> (Vec<(Token, TokenLoc)>, TokenLoc) {
+        let dummy = TokenLoc {
+            line: 0,
+            col: 0,
+            import: None,
+        };
+        let toks = toks
+            .into_iter()
+            .map(|t| (t, dummy.clone()))
+            .collect::<Vec<_>>();
+        (toks, dummy)
+    }
+}
