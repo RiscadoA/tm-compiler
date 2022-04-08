@@ -4,7 +4,11 @@ use std::fmt;
 pub enum Node<Annot> {
     Identifier(String),
     Symbol(String),
-    Union(Box<Exp<Annot>>, Box<Exp<Annot>>),
+
+    Union {
+        lhs: Box<Exp<Annot>>,
+        rhs: Box<Exp<Annot>>,
+    },
 
     Match {
         exp: Box<Exp<Annot>>,
@@ -59,7 +63,7 @@ fn fmt_expression<Annot>(f: &mut fmt::Formatter, exp: &Exp<Annot>, indent: usize
 where
     Annot: fmt::Display,
 {
-    let fmt_indent = |f: &mut fmt::Formatter, indent| write!(f, "{}", "  ".repeat(indent));
+    let fmt_indent = |f: &mut fmt::Formatter, indent| write!(f, "{}", ". ".repeat(indent));
     let annot = if f.alternate() {
         format!(" ({})", exp.1)
     } else {
@@ -70,7 +74,7 @@ where
     match &exp.0 {
         Node::Identifier(id) => writeln!(f, "{}{}", id, annot),
         Node::Symbol(sym) => writeln!(f, "'{}'{}", sym, annot),
-        Node::Union(lhs, rhs) => {
+        Node::Union { lhs, rhs } => {
             writeln!(f, "|{}", annot)?;
             fmt_expression(f, &lhs, indent + 1)?;
             fmt_expression(f, &rhs, indent + 1)
@@ -79,15 +83,17 @@ where
             writeln!(f, "match{}", annot)?;
             fmt_expression(f, &mexp, indent + 1)?;
             for arm in arms.iter() {
+                fmt_indent(f, indent + 1)?;
                 if let Some(id) = &arm.catch_id {
-                    fmt_indent(f, indent + 1)?;
                     writeln!(f, "{} @", id)?;
+                } else {
+                    writeln!(f, "! @")?;
                 }
 
                 match &arm.pat {
-                    Pat::Union(pat) => fmt_expression(f, &pat, indent + 1)?,
+                    Pat::Union(pat) => fmt_expression(f, &pat, indent + 2)?,
                     Pat::Any => {
-                        fmt_indent(f, indent + 1)?;
+                        fmt_indent(f, indent + 2)?;
                         writeln!(f, "any")?;
                     }
                 }
