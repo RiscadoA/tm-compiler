@@ -22,7 +22,7 @@ pub enum Token {
     Catch,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TokenLoc {
     pub line: usize,
     pub col: usize,

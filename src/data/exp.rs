@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Node<Annot> {
     Identifier(String),
     Symbol(String),
@@ -32,7 +32,7 @@ pub enum Node<Annot> {
 }
 
 /// Represents a match arm.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Arm<Annot> {
     pub catch_id: Option<String>,
     pub pat: Pat<Annot>,
@@ -40,14 +40,14 @@ pub struct Arm<Annot> {
 }
 
 /// Represents a match pattern.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Pat<Annot> {
     Union(Exp<Annot>),
     Any,
 }
 
 /// Represents an expression in the abstract syntax tree.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Exp<Annot>(pub Node<Annot>, pub Annot);
 
 impl<Annot> fmt::Display for Exp<Annot>
