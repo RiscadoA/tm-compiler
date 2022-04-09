@@ -5,6 +5,7 @@ use std::collections::HashMap;
 mod data;
 mod lexer;
 mod parser;
+mod simplifier;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -32,5 +33,10 @@ fn main() {
     let ast = parser::parse(toks)
         .map_err(|e| format!("Parser error: {}", e))
         .unwrap();
+    println!("{}", ast);
+
+    // Simplify the abstract syntax tree.
+    println!("------- Simplified AST -------");
+    let ast = simplifier::simplify(ast);
     println!("{}", ast);
 }
