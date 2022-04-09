@@ -1,5 +1,7 @@
 use std::fmt;
 
+use super::token::TokenLoc;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Node<Annot> {
     Identifier(String),
@@ -49,6 +51,16 @@ pub enum Pat<Annot> {
 /// Represents an expression in the abstract syntax tree.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Exp<Annot>(pub Node<Annot>, pub Annot);
+
+pub trait AnnotLoc {
+    fn loc(&self) -> &TokenLoc;
+}
+
+impl AnnotLoc for TokenLoc {
+    fn loc(&self) -> &TokenLoc {
+        self
+    }
+}
 
 impl<Annot> fmt::Display for Exp<Annot>
 where
