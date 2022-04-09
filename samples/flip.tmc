@@ -6,6 +6,6 @@ let
     },
 in
     Y f: t: match get t {
-        x @ '0' | '1' > f (next (set x t)),
+        x @ '0' | '1' > f (next (set (flip x) t)),
         any           > t,
     }
