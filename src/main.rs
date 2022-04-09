@@ -2,6 +2,7 @@ use clap::Parser;
 
 use std::collections::HashMap;
 
+mod ast;
 mod data;
 mod lexer;
 mod parser;
@@ -39,4 +40,10 @@ fn main() {
     println!("------- Simplified AST -------");
     let ast = simplifier::simplify(ast);
     println!("{}", ast);
+
+    // Annotate the AST with types.
+    println!("------------ TAST ------------");
+    let tast = ast::type_check(ast)
+        .map_err(|e| format!("Type checker error: {}", e))
+        .unwrap();
 }
