@@ -19,7 +19,7 @@
               extensions = [ "rust-src" ];
             })
             rust-bin.stable.latest.rust-analysis
-            rust-bin.stable.latest.rls
+            rust-analyzer
           ];
 
           shellHook = ''
