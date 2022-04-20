@@ -120,7 +120,7 @@ impl<'a, 'b> State<'a, 'b> {
                 }
 
                 self.in_quotes = false;
-                self.loc.col += self.acc.len();
+                self.loc.col += self.acc.len() + 2;
                 self.acc.clear();
             } else {
                 if chr == '\n' {
@@ -133,7 +133,6 @@ impl<'a, 'b> State<'a, 'b> {
             }
         } else if chr == '\'' {
             self.consume()?;
-            self.loc.col += 1;
             self.in_quotes = true;
         } else if chr.is_whitespace() {
             self.consume()?;
@@ -146,7 +145,7 @@ impl<'a, 'b> State<'a, 'b> {
         } else if let Some(&(_, tok)) = PUNCTUATION.iter().find(|(c, _)| c == &chr) {
             self.consume()?;
             self.push_tok(tok.clone());
-            self.loc.col = 1;
+            self.loc.col += 1;
         } else {
             self.acc.push(chr);
         }
