@@ -223,7 +223,7 @@ fn resolve_exp(
                     exp: Box::new(match_exp.clone()),
                     arms: new_arms,
                 },
-                Annot(match_exp.1 .0, exp.1 .1),
+                Annot(type_graph.get(&exp.1 .0), exp.1 .1),
             ))
         }
 
