@@ -2,7 +2,7 @@ use clap::Parser;
 
 use std::collections::HashMap;
 
-mod ast;
+mod annotater;
 mod data;
 mod lexer;
 mod parser;
@@ -34,16 +34,17 @@ fn main() {
     let ast = parser::parse(toks)
         .map_err(|e| format!("Parser error: {}", e))
         .unwrap();
-    println!("{}", ast);
+    println!("{:#}", ast);
+
+    // Check if the AST is valid and annotate it with extra information.
+    println!("-------- Annotated AST--------");
+    let ast = annotater::annotate(ast)
+        .map_err(|e| format!("Annotater error: {}", e))
+        .unwrap();
+    println!("{:#}", ast);
 
     // Simplify the abstract syntax tree.
     println!("------- Simplified AST -------");
     let ast = simplifier::simplify(ast);
-    println!("{}", ast);
-
-    // Annotate the AST with types.
-    println!("------------ TAST ------------");
-    let tast = ast::type_check(ast)
-        .map_err(|e| format!("Type checker error: {}", e))
-        .unwrap();
+    println!("{:#}", ast);
 }

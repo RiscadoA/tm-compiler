@@ -87,7 +87,7 @@ where
                 if let Some(id) = &arm.catch_id {
                     writeln!(f, "{} @", id)?;
                 } else {
-                    writeln!(f, "! @")?;
+                    writeln!(f, "_ @")?;
                 }
 
                 match &arm.pat {
