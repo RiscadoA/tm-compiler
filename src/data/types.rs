@@ -149,8 +149,8 @@ impl TypeGraph {
                     None
                 } else if from.len() == 1 {
                     match &from[0].0 {
-                        Type::Symbol if unresolved_from => None,
-                        Type::Tape { owned: true } if unresolved_from => None,
+                        Type::Symbol => None,
+                        Type::Tape { owned: true } => None,
                         f => Some((f.clone(), from[0].1)),
                     }
                 } else {
@@ -159,8 +159,8 @@ impl TypeGraph {
                         for j in (i + 1)..from.len() {
                             if !from[i].0.can_cast(&from[j].0) && !from[j].0.can_cast(&from[i].0) {
                                 return Err(format!(
-                                    "Cannot resolve type since incompatible types {} and {} cast to it at {} and {}",
-                                    from[i].0, from[j].0, from[i].1, from[j].1
+                                    "Cannot cast {} to {} at {}",
+                                    from[i].0, from[j].0, from[i].1
                                 ));
                             }
                         }
