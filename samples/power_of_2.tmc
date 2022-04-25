@@ -1,0 +1,29 @@
+let
+    skip = s: Y f: t: match get t {
+        s   > f (next t),
+        any > t,
+    },
+
+    expect = s: t: match get t {
+        s > t,
+    },
+
+    first = Y f: t: match get t {
+        ''  > t,
+        any > f (prev t),
+    },
+
+    div2 = Y f: t: match get t {
+        '' > first t,
+        '#' > f (next t),
+        '1' > f (next (expect '1' (skip '#' (set '#' t)))),
+    },
+
+    power2 = Y f: t:
+        let t = skip '#' (expect '1' (skip '#' t)), in
+        match get t {
+            '1' > f (div2 (first t)),
+            '' > t,
+        },
+in
+    power2

@@ -1,12 +1,2 @@
-let
-    flip = x: match x {
-        '0' > '1',
-        '1' > '0',
-    },
-    flip_t = t: flip (get t),
-    skip_ws = t: match get t {
-        ' ' > next t,
-        any > t,
-    },
-in
-    t: set (flip_t t) (skip_ws t)
+import 'flip_lib.tmc'
+t: set (flip (get t)) t
