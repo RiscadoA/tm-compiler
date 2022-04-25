@@ -34,7 +34,7 @@ fn main() {
     let ast = parser::parse(toks)
         .map_err(|e| format!("Parser error: {}", e))
         .unwrap();
-    println!("{:#}", ast);
+    println!("{}", ast);
 
     // Check if the AST is valid and annotate it with extra information.
     println!("-------- Annotated AST--------");

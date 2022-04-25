@@ -1,5 +1,5 @@
 use super::type_checker::Annot;
-use crate::data::{Arm, Exp, Node, Pat, TokenLoc, Type, TypeGraph};
+use crate::data::{Exp, Node, Pat, Type};
 
 /// Checks if the tape borrow rules are being obeyed.
 /// Searches for function applications which take &tape and instead receive tape.
@@ -29,7 +29,7 @@ pub fn borrow_check(exp: &Exp<Annot>) -> Result<(), String> {
             borrow_check(&exp)
         }
 
-        Node::Function { arg, exp } => borrow_check(&exp),
+        Node::Function { exp, .. } => borrow_check(&exp),
 
         Node::Application { func, arg } => {
             // If the function receives a &tape, the argument must also be a &tape.
