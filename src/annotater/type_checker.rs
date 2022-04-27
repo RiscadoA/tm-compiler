@@ -25,7 +25,7 @@ pub fn type_check(ast: Exp<TokenLoc>) -> Result<Exp<Annot>, String> {
 /// Checks the types of an expression.
 fn check_exp(
     exp: Exp<TokenLoc>,
-    vars: &HashMap<String, Type>,
+    vars: &HashMap<String, (bool, Type)>,
     type_graph: &mut TypeGraph,
 ) -> Result<Exp<Annot>, String> {
     match exp.0 {
@@ -33,9 +33,13 @@ fn check_exp(
             let src_typ = vars
                 .get(&id)
                 .ok_or_else(|| format!("Undefined identifier {} at {}", id, exp.1))?;
-            let typ = type_graph.push();
-            type_graph.cast(src_typ, &typ, &exp.1);
-            Ok(Exp(Node::Identifier(id), Annot(typ, exp.1)))
+            if src_typ.0 {
+                Ok(Exp(Node::Identifier(id), Annot(src_typ.1.clone(), exp.1)))
+            } else {
+                let typ = type_graph.push();
+                type_graph.cast(&src_typ.1, &typ, &exp.1);
+                Ok(Exp(Node::Identifier(id), Annot(typ, exp.1)))
+            }
         }
 
         Node::Symbol(sym) => Ok(Exp(Node::Symbol(sym), Annot(Type::Symbol, exp.1))),
@@ -76,7 +80,7 @@ fn check_exp(
 
                 let mut vars = vars.clone();
                 if let Some(catch_id) = &arm.catch_id {
-                    vars.insert(catch_id.clone(), Type::Symbol);
+                    vars.insert(catch_id.clone(), (true, Type::Symbol));
                 }
 
                 let exp = check_exp(arm.exp, &vars, type_graph)?;
@@ -107,7 +111,7 @@ fn check_exp(
             let mut new_binds = Vec::new();
             for (id, exp) in binds {
                 let exp = check_exp(exp, &vars, type_graph)?;
-                vars.insert(id.clone(), exp.1 .0.clone());
+                vars.insert(id.clone(), (true, exp.1 .0.clone()));
                 new_binds.push((id, exp));
             }
 
@@ -126,7 +130,7 @@ fn check_exp(
         Node::Function { arg, exp: body_exp } => {
             let mut vars = vars.clone();
             let arg_t = type_graph.push();
-            vars.insert(arg.clone(), arg_t.clone());
+            vars.insert(arg.clone(), (false, arg_t.clone()));
 
             let body_exp = check_exp(*body_exp, &vars, type_graph)?;
             let body_exp_t = body_exp.1 .0.clone();
@@ -282,67 +286,82 @@ fn resolve_exp(
 }
 
 /// Defines the types of the built-in functions.
-fn define_builtin_functions() -> HashMap<String, Type> {
+fn define_builtin_functions() -> HashMap<String, (bool, Type)> {
     let mut vars = HashMap::new();
 
     // set Symbol Tape -> Tape
     vars.insert(
         "set".to_owned(),
-        Type::Function {
-            arg: Box::new(Type::Symbol),
-            ret: Box::new(Type::Function {
-                arg: Box::new(Type::Tape { owned: true }),
-                ret: Box::new(Type::Tape { owned: true }),
-            }),
-        },
+        (
+            true,
+            Type::Function {
+                arg: Box::new(Type::Symbol),
+                ret: Box::new(Type::Function {
+                    arg: Box::new(Type::Tape { owned: true }),
+                    ret: Box::new(Type::Tape { owned: true }),
+                }),
+            },
+        ),
     );
 
     // get &Tape -> Symbol
     vars.insert(
         "get".to_owned(),
-        Type::Function {
-            arg: Box::new(Type::Tape { owned: false }),
-            ret: Box::new(Type::Symbol),
-        },
+        (
+            true,
+            Type::Function {
+                arg: Box::new(Type::Tape { owned: false }),
+                ret: Box::new(Type::Symbol),
+            },
+        ),
     );
 
     // next Tape -> Tape
     vars.insert(
         "next".to_owned(),
-        Type::Function {
-            arg: Box::new(Type::Tape { owned: true }),
-            ret: Box::new(Type::Tape { owned: true }),
-        },
+        (
+            true,
+            Type::Function {
+                arg: Box::new(Type::Tape { owned: true }),
+                ret: Box::new(Type::Tape { owned: true }),
+            },
+        ),
     );
 
     // prev Tape -> Tape
     vars.insert(
         "prev".to_owned(),
-        Type::Function {
-            arg: Box::new(Type::Tape { owned: true }),
-            ret: Box::new(Type::Tape { owned: true }),
-        },
+        (
+            true,
+            Type::Function {
+                arg: Box::new(Type::Tape { owned: true }),
+                ret: Box::new(Type::Tape { owned: true }),
+            },
+        ),
     );
 
     // Y ((Tape -> Tape) -> Tape -> Tape) -> (Tape -> Tape)
     vars.insert(
         "Y".to_owned(),
-        Type::Function {
-            arg: Box::new(Type::Function {
+        (
+            true,
+            Type::Function {
                 arg: Box::new(Type::Function {
-                    arg: Box::new(Type::Tape { owned: true }),
-                    ret: Box::new(Type::Tape { owned: true }),
+                    arg: Box::new(Type::Function {
+                        arg: Box::new(Type::Tape { owned: true }),
+                        ret: Box::new(Type::Tape { owned: true }),
+                    }),
+                    ret: Box::new(Type::Function {
+                        arg: Box::new(Type::Tape { owned: true }),
+                        ret: Box::new(Type::Tape { owned: true }),
+                    }),
                 }),
                 ret: Box::new(Type::Function {
                     arg: Box::new(Type::Tape { owned: true }),
                     ret: Box::new(Type::Tape { owned: true }),
                 }),
-            }),
-            ret: Box::new(Type::Function {
-                arg: Box::new(Type::Tape { owned: true }),
-                ret: Box::new(Type::Tape { owned: true }),
-            }),
-        },
+            },
+        ),
     );
 
     vars

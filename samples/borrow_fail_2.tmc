@@ -1,0 +1,5 @@
+t:
+    let
+        u = next t,
+    in
+        set (get u) t
