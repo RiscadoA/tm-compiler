@@ -41,6 +41,7 @@ fn traverse(ast: Exp<Annot>, defs: &HashMap<String, Exp<Annot>>) -> Exp<Annot> {
             },
 
             Node::Application { func, arg } => {
+                let func = traverse(*func, defs);
                 let arg = traverse(*arg, defs);
 
                 let (arg_t, ret_t) = if let Type::Function { arg, ret } = &func.1 .0 {
@@ -60,7 +61,7 @@ fn traverse(ast: Exp<Annot>, defs: &HashMap<String, Exp<Annot>>) -> Exp<Annot> {
                 }
 
                 Node::Application {
-                    func: Box::new(traverse(*func, defs)),
+                    func: Box::new(traverse(func, defs)),
                     arg: Box::new(arg),
                 }
             }
