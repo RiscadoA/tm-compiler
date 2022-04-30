@@ -10,6 +10,7 @@ struct State<'a, 'b> {
     acc: String,
     in_quotes: bool,
     is_import: bool,
+    is_comment: bool,
 }
 
 // All single character punctuation characters.
@@ -57,7 +58,8 @@ pub fn tokenize_from_file(
     lib: &HashMap<String, String>,
     import_name: Option<String>,
 ) -> Result<Vec<(Token, TokenLoc)>, String> {
-    let src = std::fs::read_to_string(path).unwrap();
+    let src = std::fs::read_to_string(path)
+        .map_err(|e| format!("Couldn't tokenize file '{}': {}", path.to_str().unwrap(), e))?;
     tokenize(&src, path.parent(), lib, import_name)
 }
 
@@ -80,6 +82,7 @@ impl<'a, 'b> State<'a, 'b> {
             acc: String::new(),
             in_quotes: false,
             is_import: false,
+            is_comment: false,
         }
     }
 
@@ -110,7 +113,13 @@ impl<'a, 'b> State<'a, 'b> {
 
     // Pushes another character for the lexer to process.
     fn push(&mut self, chr: char) -> Result<(), String> {
-        if self.in_quotes {
+        if self.is_comment {
+            if chr == '\n' {
+                self.is_comment = false;
+                self.loc.col = 1;
+                self.loc.line += 1;
+            }
+        } else if self.in_quotes {
             if chr == '\'' {
                 if self.is_import {
                     self.import(self.acc.clone())?;
@@ -134,6 +143,8 @@ impl<'a, 'b> State<'a, 'b> {
         } else if chr == '\'' {
             self.consume()?;
             self.in_quotes = true;
+        } else if chr == '#' {
+            self.is_comment = true;
         } else if chr.is_whitespace() {
             self.consume()?;
             if chr == '\n' {
