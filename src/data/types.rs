@@ -7,7 +7,7 @@ use std::fmt;
 pub enum Type {
     Symbol,
     Union,
-    Tape { owned: bool },
+    Tape,
     Function { arg: Box<Type>, ret: Box<Type> },
     Unresolved(usize),
 }
@@ -20,11 +20,12 @@ pub struct TypeTable {
 }
 
 impl Type {
-    pub fn is_resolved(&self) -> bool {
+    /// Returns true if the type contains an Unresolved type (UnresolvedTape is not considered).
+    pub fn is_unresolved(&self) -> bool {
         match self {
-            Type::Function { arg, ret } => arg.is_resolved() && ret.is_resolved(),
-            Type::Unresolved(_) => false,
-            _ => true,
+            Type::Function { arg, ret } => arg.is_unresolved() || ret.is_unresolved(),
+            Type::Unresolved(_) => true,
+            _ => false,
         }
     }
 
@@ -37,8 +38,7 @@ impl Type {
                     arg: arg2,
                     ret: ret2,
                 },
-            ) => arg.simple_cast(arg2) && ret.simple_cast(ret2),
-            (Type::Tape { owned: true }, Type::Tape { owned: false }) => true,
+            ) => arg2.simple_cast(arg) && ret.simple_cast(ret2),
             (Type::Symbol, Type::Union) => true,
             (Type::Unresolved(_), _) => true,
             (_, Type::Unresolved(_)) => true,
@@ -52,9 +52,9 @@ impl fmt::Display for Type {
         match self {
             Type::Symbol => write!(f, "symbol"),
             Type::Union => write!(f, "union"),
-            Type::Tape { owned } => write!(f, "{}tape", if *owned { "" } else { "&" }),
+            Type::Tape => write!(f, "tape"),
             Type::Function { arg, ret } => write!(f, "({} -> {})", arg, ret),
-            Type::Unresolved(id) => write!(f, "unresolved{}", id),
+            Type::Unresolved(id) => write!(f, "u{}", id),
         }
     }
 }
@@ -81,6 +81,8 @@ impl TypeTable {
         let to = self.resolve(to);
 
         match (from, to) {
+            (from, to) if from == to => {}
+
             (
                 Type::Function { arg, ret },
                 Type::Function {
@@ -110,13 +112,6 @@ impl TypeTable {
                 assert!(self.resolved.insert(from, func).is_none());
             }
 
-            (Type::Unresolved(from), Type::Tape { owned: false }) => {
-                assert!(self
-                    .resolved
-                    .insert(from, Type::Tape { owned: true })
-                    .is_none());
-            }
-
             (from, Type::Unresolved(to)) => {
                 assert!(self.resolved.insert(to, from).is_none());
             }
@@ -127,7 +122,6 @@ impl TypeTable {
 
             (from, to) => {
                 if !from.simple_cast(&to) {
-                    panic!("Cannot cast {} to {} at {}", from, to, loc);
                     return Err(format!("Cannot cast {} to {} at {}", from, to, loc));
                 }
             }
@@ -139,6 +133,10 @@ impl TypeTable {
     /// Resolves a type. If the type can't be resolved, it will be returned as is.
     pub fn resolve(&mut self, t: &Type) -> Type {
         match t {
+            Type::Function { arg, ret } => Type::Function {
+                arg: Box::new(self.resolve(arg)),
+                ret: Box::new(self.resolve(ret)),
+            },
             Type::Unresolved(id) => {
                 if let Some(resolved) = self.resolved.get(id).map(|t| t.clone()) {
                     let resolved = self.resolve(&resolved);
@@ -148,10 +146,6 @@ impl TypeTable {
                     t.clone()
                 }
             }
-            Type::Function { arg, ret } => Type::Function {
-                arg: Box::new(self.resolve(arg)),
-                ret: Box::new(self.resolve(ret)),
-            },
             _ => t.clone(),
         }
     }

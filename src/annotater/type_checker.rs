@@ -1,6 +1,6 @@
 use crate::data::{Arm, Exp, Node, Pat, TokenLoc, Type, TypeTable};
 use std::collections::HashMap;
-use std::fmt;
+use std::{fmt, panic};
 
 #[derive(Debug, Clone)]
 pub struct Annot(pub Type, pub TokenLoc);
@@ -9,32 +9,46 @@ pub struct Annot(pub Type, pub TokenLoc);
 /// All remaining unresolved types
 pub fn type_check(ast: Exp<TokenLoc>) -> Result<Exp<Annot>, String> {
     let mut type_table = TypeTable::new();
-    let ast = check_exp(
+    let ast_t = Type::Function {
+        arg: Box::new(Type::Tape),
+        ret: Box::new(Type::Tape),
+    };
+
+    let mut ast = check_exp(
         ast,
-        &define_builtin_functions(),
+        &define_builtin_functions()
+            .into_iter()
+            .map(|(i, f)| (i, (true, f)))
+            .collect(),
         &mut type_table,
-        &Type::Function {
-            arg: Box::new(Type::Tape { owned: true }),
-            ret: Box::new(Type::Tape { owned: true }),
-        },
+        &ast_t,
     )?;
+
+    ast.1 = Annot(ast_t, ast.1 .1); // Force the type to owned tape.
     resolve_exp(ast, &mut type_table, false)
 }
 
 /// Checks the types of an expression.
 fn check_exp(
     exp: Exp<TokenLoc>,
-    vars: &HashMap<String, Type>,
+    vars: &HashMap<String, (bool, Type)>,
     type_table: &mut TypeTable,
     ret_t: &Type,
 ) -> Result<Exp<Annot>, String> {
     match exp.0 {
         Node::Identifier(id) => {
-            let t = vars
+            let (fixed, var_t) = vars
                 .get(&id)
                 .ok_or_else(|| format!("Undefined identifier {} at {}", id, exp.1))?;
-            type_table.cast(t, ret_t, &exp.1)?;
-            Ok(Exp(Node::Identifier(id), Annot(t.clone(), exp.1)))
+            if *fixed {
+                type_table.cast(var_t, ret_t, &exp.1)?;
+                Ok(Exp(Node::Identifier(id), Annot(var_t.clone(), exp.1)))
+            } else {
+                let t = type_table.push();
+                type_table.cast(var_t, &t, &exp.1)?;
+                type_table.cast(&t, ret_t, &exp.1)?;
+                Ok(Exp(Node::Identifier(id), Annot(t, exp.1)))
+            }
         }
 
         Node::Symbol(sym) => {
@@ -73,7 +87,7 @@ fn check_exp(
 
                 let mut vars = vars.clone();
                 if let Some(catch_id) = &arm.catch_id {
-                    vars.insert(catch_id.clone(), Type::Symbol);
+                    vars.insert(catch_id.clone(), (false, Type::Symbol));
                 }
 
                 new_arms.push(Arm {
@@ -92,29 +106,6 @@ fn check_exp(
             ))
         }
 
-        Node::Let {
-            exp: let_exp,
-            binds,
-        } => {
-            let mut vars = vars.clone();
-
-            let mut new_binds = Vec::new();
-            for (id, exp) in binds {
-                let t = type_table.push();
-                let exp = check_exp(exp, &vars, type_table, &t)?;
-                vars.insert(id.clone(), t);
-                new_binds.push((id, exp));
-            }
-
-            Ok(Exp(
-                Node::Let {
-                    exp: Box::new(check_exp(*let_exp, &vars, type_table, ret_t)?),
-                    binds: new_binds,
-                },
-                Annot(ret_t.clone(), exp.1),
-            ))
-        }
-
         Node::Function {
             arg,
             exp: function_exp,
@@ -123,7 +114,7 @@ fn check_exp(
             let func_ret_t = type_table.push();
 
             let mut vars = vars.clone();
-            vars.insert(arg.clone(), func_arg_t.clone());
+            vars.insert(arg.clone(), (false, func_arg_t.clone()));
             let function_exp = check_exp(*function_exp, &vars, type_table, &func_ret_t)?;
 
             let func_t = Type::Function {
@@ -159,10 +150,12 @@ fn check_exp(
                 Annot(ret_t.clone(), exp.1),
             ))
         }
+
+        _ => unreachable!(),
     }
 }
 
-/// Resolves all unresolved types in an expression.
+/// Resolves all unresolved types (other than tapes) in an expression.
 fn resolve_exp(
     exp: Exp<Annot>,
     type_table: &mut TypeTable,
@@ -210,25 +203,6 @@ fn resolve_exp(
             )
         }
 
-        Node::Let {
-            exp: body_exp,
-            binds,
-        } => {
-            let mut new_binds = Vec::new();
-            for (id, exp) in binds {
-                let exp = resolve_exp(exp, type_table, true)?;
-                new_binds.push((id, exp));
-            }
-
-            Exp(
-                Node::Let {
-                    exp: Box::new(resolve_exp(*body_exp, type_table, allow_unresolved)?),
-                    binds: new_binds,
-                },
-                Annot(type_table.resolve(&exp.1 .0), exp.1 .1),
-            )
-        }
-
         Node::Function { arg, exp: body_exp } => Exp(
             Node::Function {
                 arg,
@@ -248,7 +222,7 @@ fn resolve_exp(
         node => Exp(node, Annot(type_table.resolve(&exp.1 .0), exp.1 .1)),
     };
 
-    if !exp.1 .0.is_resolved() && !allow_unresolved {
+    if exp.1 .0.is_unresolved() && !allow_unresolved {
         Err(format!(
             "Couldn't resolve type {} at {}",
             exp.1 .0, exp.1 .1
@@ -268,8 +242,8 @@ fn define_builtin_functions() -> HashMap<String, Type> {
         Type::Function {
             arg: Box::new(Type::Symbol),
             ret: Box::new(Type::Function {
-                arg: Box::new(Type::Tape { owned: true }),
-                ret: Box::new(Type::Tape { owned: true }),
+                arg: Box::new(Type::Tape),
+                ret: Box::new(Type::Tape),
             }),
         },
     );
@@ -278,7 +252,7 @@ fn define_builtin_functions() -> HashMap<String, Type> {
     vars.insert(
         "get".to_owned(),
         Type::Function {
-            arg: Box::new(Type::Tape { owned: false }),
+            arg: Box::new(Type::Tape),
             ret: Box::new(Type::Symbol),
         },
     );
@@ -287,8 +261,8 @@ fn define_builtin_functions() -> HashMap<String, Type> {
     vars.insert(
         "next".to_owned(),
         Type::Function {
-            arg: Box::new(Type::Tape { owned: true }),
-            ret: Box::new(Type::Tape { owned: true }),
+            arg: Box::new(Type::Tape),
+            ret: Box::new(Type::Tape),
         },
     );
 
@@ -296,8 +270,8 @@ fn define_builtin_functions() -> HashMap<String, Type> {
     vars.insert(
         "prev".to_owned(),
         Type::Function {
-            arg: Box::new(Type::Tape { owned: true }),
-            ret: Box::new(Type::Tape { owned: true }),
+            arg: Box::new(Type::Tape),
+            ret: Box::new(Type::Tape),
         },
     );
 
@@ -307,17 +281,17 @@ fn define_builtin_functions() -> HashMap<String, Type> {
         Type::Function {
             arg: Box::new(Type::Function {
                 arg: Box::new(Type::Function {
-                    arg: Box::new(Type::Tape { owned: true }),
-                    ret: Box::new(Type::Tape { owned: true }),
+                    arg: Box::new(Type::Tape),
+                    ret: Box::new(Type::Tape),
                 }),
                 ret: Box::new(Type::Function {
-                    arg: Box::new(Type::Tape { owned: true }),
-                    ret: Box::new(Type::Tape { owned: true }),
+                    arg: Box::new(Type::Tape),
+                    ret: Box::new(Type::Tape),
                 }),
             }),
             ret: Box::new(Type::Function {
-                arg: Box::new(Type::Tape { owned: true }),
-                ret: Box::new(Type::Tape { owned: true }),
+                arg: Box::new(Type::Tape),
+                ret: Box::new(Type::Tape),
             }),
         },
     );
