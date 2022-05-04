@@ -1,0 +1,4 @@
+let
+    wrapper = t: f: f t,
+in
+    t: (t: set (get (t next)) (t prev)) (wrapper t)

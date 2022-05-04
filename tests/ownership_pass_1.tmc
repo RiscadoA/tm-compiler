@@ -1,0 +1,4 @@
+let
+    i = t: t,
+in
+    t: set (get (i t)) t
