@@ -71,7 +71,7 @@ impl fmt::Display for Type {
             Type::Tape => write!(f, "tape"),
             Type::Function { arg, ret } => write!(f, "({} -> {})", arg, ret),
             Type::Unresolved(id) => write!(f, "u{}", id),
-            Type::UnresolvedUnion(id) => write!(f, "uunion{}", id),
+            Type::UnresolvedUnion(_) => write!(f, "symbol/union"),
         }
     }
 }

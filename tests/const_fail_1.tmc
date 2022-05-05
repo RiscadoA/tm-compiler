@@ -1,0 +1,3 @@
+t: set match get t {
+    get t > '0',
+} t

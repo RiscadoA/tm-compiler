@@ -106,9 +106,11 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
         eprintln!("");
     }
 
-    // Annotate the AST with the type of each expression.
+    // Annotate the AST with the type of each expression, and check if match patterns are constant.
     let mut ast = annotater::type_checker::type_check(ast)
         .map_err(|e| format!("Type checker error: {}", e))?;
+    annotater::const_checker::const_check(&ast)
+        .map_err(|e| format!("Const checker error: {}", e))?;
 
     // Simplify the AST further:
     // - remove non tape -> tape applications
@@ -139,6 +141,7 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
 
     // Simplify the AAST even further:
     // - move matches so that they are at the root of the function expressions.
+    // - switch every get for a match.
     // - remove matches which are used as arguments to other matches.
     // - remove non tape -> tape applications
     // - remove trivial function applications (identity functions and application functions)
