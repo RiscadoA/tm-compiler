@@ -1,0 +1,20 @@
+import 'std/bool.tmc'
+let
+    # Iterates over the tape.
+    # - cond (symbol -> symbol) - Condition used to check if the iteration should end (return 'true' to end, 'false' to continue).
+    # - step (tape -> tape)     - Called for each step of the iteration.
+    iter = cond: step: Y f: t: match cond (get t) {
+        true  > t,
+        false > f (step t),
+    },
+
+    # Iterates over the tape until a pattern matches.
+    # - pat  (union)        - Pattern to match.
+    # - step (tape -> tape) - Called for each step of the iteration.
+    find = pat: iter
+        (s: match s {
+            pat > true,
+            any > false,
+        }),
+in
+    

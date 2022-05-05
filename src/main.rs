@@ -138,7 +138,7 @@ fn main() {
     let args = Cli::parse();
 
     // Load the standard library files.
-    let lib = load_lib!("std/iter.tmc", "std/check.tmc");
+    let lib = load_lib!("std/bool.tmc", "std/iter.tmc");
 
     // Compile with the input arguments and the standard library.
     std::process::exit(if let Err(err) = compile(&args, &lib) {

@@ -1,0 +1,38 @@
+let
+    # Symbols used for representing boolean values.
+    true = 'true',
+    false = 'false',
+
+    # Negates a boolean value.
+    # - b (symbol) - The boolean value to negate (true or false)
+    not = b: match b {
+        true  > false,
+        false > true,
+    },
+
+    # Returns the logical or of two boolean values.
+    # - b1 (symbol) - The first boolean value
+    # - b2 (symbol) - The second boolean value
+    or = b1: b2: match b1 {
+        true  > true,
+        false > b1,
+    },
+
+    # Returns the logical and of two boolean values.
+    # - b1 (symbol) - The first boolean value
+    # - b2 (symbol) - The second boolean value
+    and = b1: b2: match b1 {
+        true  > b2,
+        false > false,
+    },
+
+    # Checks if the given symbol is part of a union of symbols, and if so, returns true. Otherwise, returns false.
+    # - pat (union)  - The union of symbols.
+    # - x   (symbol) - The symbol to check.
+    is = pat: x: match x {
+        pat > true,
+        any > false,
+    },
+
+
+in
