@@ -10,6 +10,7 @@ pub enum Type {
     Tape,
     Function { arg: Box<Type>, ret: Box<Type> },
     Unresolved(usize),
+    UnresolvedUnion(usize),
 }
 
 /// Stores all of 'Unresolved' types and their corresponding resolved types, if any.
@@ -20,11 +21,22 @@ pub struct TypeTable {
 }
 
 impl Type {
-    /// Returns true if the type contains an Unresolved type (UnresolvedTape is not considered).
-    pub fn is_unresolved(&self) -> bool {
+    /// Returns true if the type contains an Unresolved type (UnresolvedUnion is not considered).
+    pub fn is_unresolved_non_union(&self) -> bool {
         match self {
-            Type::Function { arg, ret } => arg.is_unresolved() || ret.is_unresolved(),
+            Type::Function { arg, ret } => {
+                arg.is_unresolved_non_union() || ret.is_unresolved_non_union()
+            }
             Type::Unresolved(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if the type contains an UnresolvedUnion type.
+    pub fn is_unresolved_union(&self) -> bool {
+        match self {
+            Type::Function { arg, ret } => arg.is_unresolved_union() || ret.is_unresolved_union(),
+            Type::UnresolvedUnion(_) => true,
             _ => false,
         }
     }
@@ -40,6 +52,10 @@ impl Type {
                 },
             ) => arg2.simple_cast(arg) && ret.simple_cast(ret2),
             (Type::Symbol, Type::Union) => true,
+            (Type::UnresolvedUnion(_), Type::Symbol) => true,
+            (Type::UnresolvedUnion(_), Type::Union) => true,
+            (Type::Symbol, Type::UnresolvedUnion(_)) => true,
+            (Type::Union, Type::UnresolvedUnion(_)) => true,
             (Type::Unresolved(_), _) => true,
             (_, Type::Unresolved(_)) => true,
             (from, to) => from == to,
@@ -55,6 +71,7 @@ impl fmt::Display for Type {
             Type::Tape => write!(f, "tape"),
             Type::Function { arg, ret } => write!(f, "({} -> {})", arg, ret),
             Type::Unresolved(id) => write!(f, "u{}", id),
+            Type::UnresolvedUnion(id) => write!(f, "uunion{}", id),
         }
     }
 }
@@ -110,6 +127,10 @@ impl TypeTable {
                 };
                 self.cast(&func, &to, loc)?;
                 assert!(self.resolved.insert(from, func).is_none());
+            }
+
+            (Type::Symbol, Type::Unresolved(id)) | (Type::Unresolved(id), Type::Union) => {
+                assert!(self.resolved.insert(id, Type::UnresolvedUnion(0)).is_none());
             }
 
             (from, Type::Unresolved(to)) => {

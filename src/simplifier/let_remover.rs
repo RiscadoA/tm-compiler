@@ -1,75 +1,72 @@
 use crate::data::{Arm, Exp, Node, Pat};
 
-use std::collections::HashMap;
-
-/// Removes all let bindings from the AST, replacing references to the bound variables with the bound expressions.
+/// Removes all let bindings from the AST, replacing bindings with function applications.
 pub fn remove_lets<Annot>(ast: Exp<Annot>) -> Exp<Annot>
 where
     Annot: Clone,
 {
-    traverse(ast, &HashMap::new())
+    traverse(ast)
 }
 
-fn traverse<Annot>(ast: Exp<Annot>, defs: &HashMap<String, Exp<Annot>>) -> Exp<Annot>
+fn traverse<Annot>(ast: Exp<Annot>) -> Exp<Annot>
 where
     Annot: Clone,
 {
     Exp(
         match ast.0 {
             Node::Union { lhs, rhs } => Node::Union {
-                lhs: Box::new(traverse(*lhs, defs)),
-                rhs: Box::new(traverse(*rhs, defs)),
+                lhs: Box::new(traverse(*lhs)),
+                rhs: Box::new(traverse(*rhs)),
             },
 
             Node::Match { exp, arms } => Node::Match {
-                exp: Box::new(traverse(*exp, defs)),
+                exp: Box::new(traverse(*exp)),
                 arms: arms
                     .into_iter()
                     .map(|arm| {
                         let pat = match arm.pat {
-                            Pat::Union(exp) => Pat::Union(traverse(exp, &defs)),
+                            Pat::Union(exp) => Pat::Union(traverse(exp)),
                             Pat::Any => Pat::Any,
                         };
-
-                        let mut defs = defs.clone();
-                        if let Some(id) = &arm.catch_id {
-                            defs.remove(id);
-                        }
 
                         Arm {
                             catch_id: arm.catch_id,
                             pat,
-                            exp: traverse(arm.exp, &defs),
+                            exp: traverse(arm.exp),
                         }
                     })
                     .collect(),
             },
 
             Node::Let { exp, binds } => {
-                let mut defs = defs.clone();
-                for (id, exp) in binds {
-                    defs.insert(id, traverse(exp, &defs));
+                let mut exp = traverse(*exp);
+                for (id, bind) in binds.into_iter().rev() {
+                    let annot = bind.1.clone();
+                    exp = Exp(
+                        Node::Application {
+                            func: Box::new(Exp(
+                                Node::Function {
+                                    arg: id,
+                                    exp: Box::new(exp),
+                                },
+                                annot.clone(),
+                            )),
+                            arg: Box::new(traverse(bind)),
+                        },
+                        annot,
+                    );
                 }
-                return traverse(*exp, &defs);
+                exp.0
             }
 
-            Node::Function { arg, exp } => {
-                let mut defs = defs.clone();
-                defs.remove(&arg);
-                Node::Function {
-                    arg,
-                    exp: Box::new(traverse(*exp, &defs)),
-                }
+            Node::Function { arg, exp } => Node::Function {
+                arg,
+                exp: Box::new(traverse(*exp)),
             },
 
             Node::Application { func, arg } => Node::Application {
-                func: Box::new(traverse(*func, defs)),
-                arg: Box::new(traverse(*arg, defs)),
-            },
-
-            Node::Identifier(id) => match defs.get(&id) {
-                Some(exp) => return exp.clone(),
-                None => Node::Identifier(id),
+                func: Box::new(traverse(*func)),
+                arg: Box::new(traverse(*arg)),
             },
 
             n => n,
