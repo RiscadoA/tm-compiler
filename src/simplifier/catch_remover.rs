@@ -17,20 +17,24 @@ pub fn remove_catch(ast: Exp<Annot>, changed: &mut bool) -> Exp<Annot> {
 
                 for arm in arms {
                     let exp = remove_catch(arm.exp, changed);
+                    let pat = match arm.pat {
+                        Pat::Union(pat) => Pat::Union(remove_catch(pat, changed)),
+                        Pat::Any => Pat::Any,
+                    };
 
                     if let Some(id) = arm.catch_id {
-                        if let Pat::Union(pat) = arm.pat {
+                        if let Pat::Union(pat) = pat {
                             // Check if the catch pattern is a constant union.
                             // If it isn't, we can't remove the catch.
                             let mut symbols = HashSet::new();
-                            if get_union_symbols(&pat, &mut symbols) {
+                            if pat.union_to_set(&mut symbols) {
                                 // It is a constant union, remove the catch.
                                 *changed = true;
                                 for sym in symbols {
                                     new_arms.push(Arm {
                                         pat: Pat::Union(Exp(
                                             Node::Symbol(sym.clone()),
-                                            pat.1.clone(),
+                                            Annot(Type::Symbol, pat.1 .1.clone()),
                                         )),
                                         catch_id: None,
                                         exp: Exp(
@@ -50,7 +54,7 @@ pub fn remove_catch(ast: Exp<Annot>, changed: &mut bool) -> Exp<Annot> {
                                                 )),
                                                 arg: Box::new(Exp(
                                                     Node::Symbol(sym.clone()),
-                                                    pat.1.clone(),
+                                                    Annot(Type::Symbol, pat.1 .1.clone()),
                                                 )),
                                             },
                                             exp.1.clone(),
@@ -62,7 +66,7 @@ pub fn remove_catch(ast: Exp<Annot>, changed: &mut bool) -> Exp<Annot> {
                     } else {
                         new_arms.push(Arm {
                             catch_id: None,
-                            pat: arm.pat,
+                            pat,
                             exp,
                         });
                     }
@@ -88,17 +92,4 @@ pub fn remove_catch(ast: Exp<Annot>, changed: &mut bool) -> Exp<Annot> {
         },
         ast.1,
     )
-}
-
-fn get_union_symbols<Annot>(exp: &Exp<Annot>, symbols: &mut HashSet<String>) -> bool {
-    match &exp.0 {
-        Node::Symbol(s) => {
-            symbols.insert(s.clone());
-            true
-        }
-        Node::Union { lhs, rhs } => {
-            get_union_symbols(&lhs, symbols) && get_union_symbols(&rhs, symbols)
-        }
-        _ => false,
-    }
 }

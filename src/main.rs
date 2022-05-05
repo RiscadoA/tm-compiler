@@ -159,6 +159,7 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
     loop {
         let mut changed = false;
         ast = simplifier::catch_remover::remove_catch(ast, &mut changed);
+        ast = simplifier::pat_dedup::dedup_patterns(ast, &mut changed);
         ast = simplifier::match_mover::move_matches(ast, &mut changed);
         //let ast = match_merger::merge_matches(ast)?;
         ast = simplifier::applier::do_applications(ast, &mut changed);

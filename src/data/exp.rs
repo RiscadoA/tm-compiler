@@ -83,6 +83,38 @@ impl<Annot> Exp<Annot> {
             _ => (),
         }
     }
+
+    /// Collects symbols used in the expression, if its a union expression.
+    /// If its not a union expression or if its not constant, returns false.
+    pub fn union_to_set(&self, symbols: &mut HashSet<String>) -> bool {
+        match &self.0 {
+            Node::Symbol(s) => {
+                symbols.insert(s.clone());
+                true
+            }
+            Node::Union { lhs, rhs } => lhs.union_to_set(symbols) && rhs.union_to_set(symbols),
+            _ => false,
+        }
+    }
+
+    /// Generates a union expression from a set of symbols.
+    pub fn union_from_set(symbols: &HashSet<String>, annot: &Annot) -> Exp<Annot>
+    where
+        Annot: Clone,
+    {
+        let mut symbols = symbols.iter().map(|s| s.clone());
+        let mut exp = Exp(Node::Symbol(symbols.next().unwrap()), annot.clone());
+        for symbol in symbols {
+            exp = Exp(
+                Node::Union {
+                    lhs: Box::new(exp),
+                    rhs: Box::new(Exp(Node::Symbol(symbol), annot.clone())),
+                },
+                annot.clone(),
+            );
+        }
+        exp
+    }
 }
 
 impl<Annot> fmt::Display for Exp<Annot>
