@@ -1,6 +1,6 @@
 use super::Annot;
-use crate::data::{Arm, Exp, Node, Pat, TokenLoc, Type};
-use std::{collections::HashMap, hash::Hash};
+use crate::data::{Arm, Exp, Node, Pat, Type};
+use std::{collections::HashMap};
 
 /// Fixes a type annotated AST by resolving every unresolved union type.
 pub fn resolve_unions(ast: Exp<Annot>) -> Exp<Annot> {
@@ -124,7 +124,7 @@ fn collect_casts(
             }
         }
 
-        Node::Symbol(sym) => {
+        Node::Symbol(_) => {
             collect_casts_in_type(Some(&Type::Symbol), ret_t, casts);
         }
 

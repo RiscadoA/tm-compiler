@@ -1,5 +1,5 @@
 use super::Annot;
-use crate::data::{Arm, Exp, Node, Pat, TokenLoc, Type};
+use crate::data::{Exp, Node, Type};
 use std::collections::HashSet;
 
 /// Converts tape types to &tape where possible and then checks if the tape ownership rules are met.
