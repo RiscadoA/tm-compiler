@@ -13,7 +13,7 @@ macro_rules! load_lib {
     ($a:expr) => {
         {
             let mut lib = HashMap::new();
-            lib.insert($a.to_owned(), include_str!($a).to_owned());
+            lib.insert($a.to_owned(), include_str!(concat!("../", $a)).to_owned());
             lib
         }
     };
@@ -21,7 +21,7 @@ macro_rules! load_lib {
     ($a:expr, $b:expr) => {
         {
             let mut lib = load_lib!($a);
-            lib.insert($b.to_owned(), include_str!($b).to_owned());
+            lib.insert($b.to_owned(), include_str!(concat!("../", $b)).to_owned());
             lib
         }
     };
@@ -29,7 +29,7 @@ macro_rules! load_lib {
     ($a:expr, $($b:tt)*) => {
         {
             let mut lib = load_lib!($($b)*);
-            lib.insert($a.to_owned(), include_str!($a).to_owned());
+            lib.insert($a.to_owned(), include_str!(concat!("../", $a)).to_owned());
             lib
         }
     }
@@ -109,9 +109,7 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
     }
 
     // Annotate the AST with type information.
-    let ast = annotater::annotate(ast)
-        .map_err(|e| format!("Annotater error: {}", e))
-        .unwrap();
+    let ast = annotater::annotate(ast).map_err(|e| format!("Annotater error: {}", e))?;
     if args.annotated {
         eprintln!("-------- Annotated AST--------");
         eprintln!("{:#}", ast);
@@ -148,4 +146,45 @@ fn main() {
         eprintln!("Compilation successful!");
         0
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_compiler_tests() {
+        let lib = load_lib!("std/bool.tmc", "std/iter.tmc");
+
+        // Compile every program in the tests directory.
+        for entry in std::fs::read_dir("tests").unwrap() {
+            let entry = entry.unwrap();
+            if entry.file_type().unwrap().is_file() {
+                let path = entry.path();
+                let name = path.file_name().unwrap().to_str().unwrap();
+
+                if name.ends_with(".tmc") {
+                    let args = Cli {
+                        path: Some(path.clone()),
+                        format: None,
+                        stdin: false,
+                        tokens: false,
+                        parser: false,
+                        annotated: false,
+                        simplified: false,
+                    };
+
+                    if name.contains("fail") {
+                        if compile(&args, &lib).is_ok() {
+                            panic!("Test program {} should have failed!", name);
+                        }
+                    } else {
+                        if let Err(err) = compile(&args, &lib) {
+                            panic!("Test program {} should have compiled! Instead, got error: {}", name, err);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

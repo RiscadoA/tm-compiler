@@ -1,0 +1,4 @@
+let
+    union = x: y: x | y,
+in
+    (s: t: set s t) (union '0' '1')

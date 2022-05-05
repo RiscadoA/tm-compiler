@@ -1,0 +1,5 @@
+let
+    a = x: x,
+    b = t: t,
+in
+    t: (x: b t) a
