@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -49,6 +50,40 @@ pub enum Pat<Annot> {
 /// Represents an expression in the abstract syntax tree.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Exp<Annot>(pub Node<Annot>, pub Annot);
+
+impl<Annot> Exp<Annot> {
+    /// Collects every symbol used in the expression, recursively.
+    pub fn collect_symbols(&self, set: &mut HashSet<String>) {
+        match &self.0 {
+            Node::Symbol(s) => {
+                set.insert(s.clone());
+            }
+            Node::Match { exp, arms } => {
+                exp.collect_symbols(set);
+                for arm in arms {
+                    if let Pat::Union(exp) = &arm.pat {
+                        exp.collect_symbols(set);
+                    }
+                    arm.exp.collect_symbols(set);
+                }
+            }
+            Node::Let { exp, binds } => {
+                exp.collect_symbols(set);
+                for (_, exp) in binds {
+                    exp.collect_symbols(set);
+                }
+            }
+            Node::Function { exp, .. } => {
+                exp.collect_symbols(set);
+            }
+            Node::Application { func, arg } => {
+                func.collect_symbols(set);
+                arg.collect_symbols(set);
+            }
+            _ => (),
+        }
+    }
+}
 
 impl<Annot> fmt::Display for Exp<Annot>
 where

@@ -1,6 +1,6 @@
 use clap::{ArgGroup, Parser};
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Read;
 
 mod annotater;
@@ -50,6 +50,10 @@ struct Cli {
     #[clap(short, long)]
     format: Option<String>,
 
+    /// The working alphabet of the turing machine.
+    #[clap(short, long, required = true, multiple_values = true)]
+    alphabet: Vec<String>,
+
     /// Should the input be read from stdin instead of a file?
     #[clap(short = 'i', long)]
     stdin: bool,
@@ -61,7 +65,7 @@ struct Cli {
     #[clap(short, long)]
     parser: bool,
     /// Should the annotated AST be printed?
-    #[clap(short, long)]
+    #[clap(short = 'A', long)]
     annotated: bool,
     /// Should the simplified AST be printed?
     #[clap(short, long)]
@@ -93,13 +97,19 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
         eprintln!("");
     }
 
+    // Get the set of symbols used by the AST (including those only used during compilation)
+    let mut const_alphabet = HashSet::new();
+    ast.collect_symbols(&mut const_alphabet);
+
     // Apply initial simplifications on the AST:
     // - replace let statements with function applications
     // - remove unused variables
     // - deduplicate identifiers.
+    // - remove match 'any' patterns.
     let ast = simplifier::let_remover::remove_lets(ast);
     let ast = simplifier::unused_remover::remove_unused(ast);
     let ast = simplifier::id_dedup::dedup_ids(ast);
+    let ast = simplifier::any_remover::remove_any(ast, &const_alphabet);
     if args.simplified {
         eprintln!("-------- Simplified AST --------");
         eprintln!("{}", ast);
@@ -143,12 +153,16 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
     // - move matches so that they are at the root of the function expressions.
     // - switch every get for a match.
     // - remove matches which are used as arguments to other matches.
+    // - remove catch ids
     // - remove non tape -> tape applications
     // - remove trivial function applications (identity functions and application functions)
     loop {
         let mut changed = false;
+        ast = simplifier::catch_remover::remove_catch(ast, &mut changed);
         ast = simplifier::match_mover::move_matches(ast, &mut changed);
         //let ast = match_merger::merge_matches(ast)?;
+        ast = simplifier::applier::do_applications(ast, &mut changed);
+        ast = simplifier::trivial_remover::remove_trivial(ast, &mut changed);
         if !changed {
             break;
         }
@@ -195,6 +209,10 @@ mod tests {
 
                 if name.ends_with(".tmc") {
                     let args = Cli {
+                        alphabet: ["0", "1", "i", "z", "a", "b"]
+                            .iter()
+                            .map(|s| s.to_string())
+                            .collect(),
                         path: Some(path.clone()),
                         format: None,
                         stdin: false,
