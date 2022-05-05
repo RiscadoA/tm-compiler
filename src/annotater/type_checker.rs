@@ -1,6 +1,6 @@
 use crate::data::{Arm, Exp, Node, Pat, TokenLoc, Type, TypeTable};
 use std::collections::HashMap;
-use std::{fmt, panic};
+use std::fmt;
 
 #[derive(Debug, Clone)]
 pub struct Annot(pub Type, pub TokenLoc);
@@ -222,7 +222,7 @@ fn resolve_exp(
         node => Exp(node, Annot(type_table.resolve(&exp.1 .0), exp.1 .1)),
     };
 
-    if exp.1 .0.is_unresolved() && !allow_unresolved {
+    if exp.1 .0.is_unresolved_non_union() && !allow_unresolved {
         Err(format!(
             "Couldn't resolve type {} at {}",
             exp.1 .0, exp.1 .1
@@ -302,15 +302,5 @@ fn define_builtin_functions() -> HashMap<String, Type> {
 impl fmt::Display for Annot {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_type_check_simple() {
-        todo!();
     }
 }
