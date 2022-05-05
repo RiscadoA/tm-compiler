@@ -37,8 +37,14 @@ fn traverse(exp: &Exp<Annot>, consumed: &mut HashSet<String>, is_ref: bool) -> R
         }
 
         Node::Function { arg, exp: func_exp } => {
+            let contained = consumed.contains(arg);
             consumed.remove(arg);
             traverse(func_exp, consumed, false)?;
+            if contained {
+                consumed.insert(arg.clone());
+            } else {
+                consumed.remove(arg);
+            }
         }
 
         Node::Application { func, arg } => {

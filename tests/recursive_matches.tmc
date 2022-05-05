@@ -1,0 +1,13 @@
+let
+    flip = s: match s {
+        '0' > '1',
+        '1' > '0',
+    },
+in
+    t: set match flip (get t) {
+        flip '0' > '1',
+        flip '1' > '0',
+        x @ any > match x {
+            'a' > 'b',
+        },
+    } t

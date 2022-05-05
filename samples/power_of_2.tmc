@@ -19,9 +19,11 @@ let
         '1' > f (next (expect '1' (skip '#' (set '#' t)))),
     },
 
-    power2 = Y f: t: (t: match get t {
+    power2 = Y f: t:
+        let t = skip '#' (expect '1' (skip '#' t)), in
+        match get t {
             '1' > f (div2 (first t)),
             '' > t,
-        }) (skip '#' (expect '1' (skip '#' t))),
+        },
 in
     power2
