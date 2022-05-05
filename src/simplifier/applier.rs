@@ -50,9 +50,7 @@ fn traverse(ast: Exp<Annot>, defs: &HashMap<String, Exp<Annot>>) -> Exp<Annot> {
                     panic!("Expected function type, got {:?}", func.1 .0);
                 };
 
-                if &**arg_t != &(Type::Tape { owned: true })
-                    || &**ret_t != &(Type::Tape { owned: true })
-                {
+                if &**arg_t != &Type::Tape || &**ret_t != &Type::Tape {
                     if let Node::Function { arg: arg_id, exp } = func.0 {
                         let mut defs = defs.clone();
                         defs.insert(arg_id, arg);
