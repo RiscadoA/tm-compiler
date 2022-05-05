@@ -93,36 +93,63 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
         eprintln!("");
     }
 
-    // Apply intermediate simplifications on the AST:
+    // Apply initial simplifications on the AST:
     // - replace let statements with function applications
-    // - dedup identifiers
     // - remove unused variables
-    // - remove identity applications
+    // - deduplicate identifiers.
     let ast = simplifier::let_remover::remove_lets(ast);
     let ast = simplifier::unused_remover::remove_unused(ast);
     let ast = simplifier::id_dedup::dedup_ids(ast);
-    // TODO - remove identity applications
     if args.simplified {
         eprintln!("-------- Simplified AST --------");
         eprintln!("{}", ast);
         eprintln!("");
     }
 
-    // Annotate the AST with type information.
-    let ast = annotater::annotate(ast).map_err(|e| format!("Annotater error: {}", e))?;
+    // Annotate the AST with the type of each expression.
+    let mut ast = annotater::type_checker::type_check(ast)
+        .map_err(|e| format!("Type checker error: {}", e))?;
+
+    // Simplify the AST further:
+    // - remove non tape -> tape applications
+    // - remove trivial function applications (identity functions and application functions)
+    loop {
+        let mut changed = false;
+        ast = simplifier::applier::do_applications(ast, &mut changed);
+        ast = simplifier::trivial_remover::remove_trivial(ast, &mut changed);
+        if !changed {
+            break;
+        }
+    }
+    if args.simplified {
+        eprintln!("-------- Simplified AAST (before union resolver) --------");
+        eprintln!("{}", ast);
+        eprintln!("");
+    }
+
+    // Check for ownership errors and resolve the types of unions.
+    annotater::ownership_checker::ownership_check(&ast)
+        .map_err(|e| format!("Ownership checker error: {}", e))?;
+    let mut ast = annotater::union_resolver::resolve_unions(ast);
     if args.annotated {
-        eprintln!("-------- Annotated AST--------");
+        eprintln!("-------- Annotated AST --------");
         eprintln!("{:#}", ast);
         eprintln!("");
     }
 
-    // Simplify the AAST further:
-    // - apply every non tape application.
+    // Simplify the AAST even further:
     // - move matches so that they are at the root of the function expressions.
     // - remove matches which are used as arguments to other matches.
-    let ast = simplifier::applier::do_applications(ast);
-    let ast = simplifier::match_mover::move_matches(ast);
-    //let ast = match_merger::merge_matches(ast)?;
+    // - remove non tape -> tape applications
+    // - remove trivial function applications (identity functions and application functions)
+    loop {
+        let mut changed = false;
+        ast = simplifier::match_mover::move_matches(ast, &mut changed);
+        //let ast = match_merger::merge_matches(ast)?;
+        if !changed {
+            break;
+        }
+    }
     if args.simplified {
         eprintln!("-------- Simplified AAST --------");
         eprintln!("{:#}", ast);
@@ -180,7 +207,10 @@ mod tests {
                         }
                     } else {
                         if let Err(err) = compile(&args, &lib) {
-                            panic!("Test program {} should have compiled! Instead, got error: {}", name, err);
+                            panic!(
+                                "Test program {} should have compiled! Instead, got error: {}",
+                                name, err
+                            );
                         }
                     }
                 }
