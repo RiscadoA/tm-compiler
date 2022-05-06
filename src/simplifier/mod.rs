@@ -3,6 +3,7 @@ pub mod applier;
 pub mod catch_remover;
 pub mod id_dedup;
 pub mod let_remover;
+pub mod match_merger;
 pub mod match_mover;
 pub mod pat_dedup;
 pub mod trivial_remover;

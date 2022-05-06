@@ -1,0 +1,24 @@
+let
+    true = 'true',
+    false = 'false',
+    
+    or = x: y: match x {
+        true  > true,
+        false > y,
+    },
+    
+    is = pat: s: match s {
+        pat > true,
+        any > false,
+    },
+in
+    t: match or (is '0' (get t)) (is '1' (get t)) {
+        true > set '1' t,
+        false > t,
+    }
+
+# Should become:
+# t: match get t {
+#   '0' | '1' > set '1' t,  
+#   any > t,
+# }

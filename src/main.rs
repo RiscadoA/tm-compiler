@@ -150,10 +150,11 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
     }
 
     // Simplify the AAST even further:
-    // - move matches so that they are at the root of the function expressions.
-    // - switch every get for a match.
-    // - remove matches which are used as arguments to other matches.
     // - remove catch ids
+    // - remove duplicated patterns
+    // - move matches so that they are at the root of the function expressions.
+    // - merge matches which are used as arguments to other matches.
+    // - switch every get for a match.
     // - remove non tape -> tape applications
     // - remove trivial function applications (identity functions and application functions)
     loop {
@@ -161,7 +162,7 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
         ast = simplifier::catch_remover::remove_catch(ast, &mut changed);
         ast = simplifier::pat_dedup::dedup_patterns(ast, &mut changed);
         ast = simplifier::match_mover::move_matches(ast, &mut changed);
-        //let ast = match_merger::merge_matches(ast)?;
+        ast = simplifier::match_merger::merge_matches(ast, &mut changed)?;
         ast = simplifier::applier::do_applications(ast, &mut changed);
         ast = simplifier::trivial_remover::remove_trivial(ast, &mut changed);
         if !changed {

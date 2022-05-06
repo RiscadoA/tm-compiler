@@ -1,0 +1,4 @@
+t: match (match get t { 'z' > '0', 'i' > '1', x @ any > x, }) {
+    '0' > t,
+    '1' > next t,
+}
