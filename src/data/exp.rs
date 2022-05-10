@@ -55,6 +55,83 @@ pub enum Pat<Annot> {
 pub struct Exp<Annot>(pub Node<Annot>, pub Annot);
 
 impl<Annot> Exp<Annot> {
+    /// Checks if two expressions are equivalent, ignoring annotations.
+    pub fn eq_ignore_annot(&self, other: &Exp<Annot>) -> bool {
+        match (&self.0, &other.0) {
+            (Node::Identifier(id), Node::Identifier(id2)) => id == id2,
+            (Node::Symbol(sym), Node::Symbol(sym2)) => sym == sym2,
+            (Node::Accept, Node::Accept) => true,
+            (Node::Reject, Node::Reject) => true,
+            (Node::Abort, Node::Abort) => true,
+            (
+                Node::Union { lhs, rhs },
+                Node::Union {
+                    lhs: lhs2,
+                    rhs: rhs2,
+                },
+            ) => {
+                if lhs.eq_ignore_annot(lhs2) && rhs.eq_ignore_annot(rhs2) {
+                    true
+                } else {
+                    let mut set1 = HashSet::new();
+                    let mut set2 = HashSet::new();
+                    if lhs.union_to_set(&mut set1) && rhs.union_to_set(&mut set2) {
+                        set1 == set2
+                    } else {
+                        false
+                    }
+                }
+            }
+            (
+                Node::Match { exp, arms },
+                Node::Match {
+                    exp: exp2,
+                    arms: arms2,
+                },
+            ) => {
+                exp.eq_ignore_annot(exp2)
+                    && arms.iter().all(|arm| {
+                        arms2
+                            .iter()
+                            .find(|arm2| {
+                                arm.pat.eq_ignore_annot(&arm2.pat)
+                                    && arm.catch_id == arm2.catch_id
+                                    && arm.exp.eq_ignore_annot(&arm2.exp)
+                            })
+                            .is_some()
+                    })
+            }
+            (
+                Node::Let { exp, binds },
+                Node::Let {
+                    exp: exp2,
+                    binds: binds2,
+                },
+            ) => {
+                exp.eq_ignore_annot(exp2)
+                    && binds
+                        .iter()
+                        .zip(binds2.iter())
+                        .all(|(b1, b2)| b1.0 == b2.0 && b1.1.eq_ignore_annot(&b2.1))
+            }
+            (
+                Node::Function { arg, exp },
+                Node::Function {
+                    arg: arg2,
+                    exp: exp2,
+                },
+            ) => arg == arg2 && exp.eq_ignore_annot(exp2),
+            (
+                Node::Application { func, arg },
+                Node::Application {
+                    func: func2,
+                    arg: arg2,
+                },
+            ) => func.eq_ignore_annot(func2) && arg.eq_ignore_annot(arg2),
+            _ => false,
+        }
+    }
+
     /// Collects every symbol used in the expression, recursively.
     pub fn collect_symbols(&self, set: &mut HashSet<String>) {
         match &self.0 {
@@ -172,6 +249,16 @@ impl<Annot> Exp<Annot> {
             );
         }
         exp
+    }
+}
+
+impl<Annot> Pat<Annot> {
+    pub fn eq_ignore_annot(&self, other: &Pat<Annot>) -> bool {
+        match (self, other) {
+            (Pat::Union(lhs), Pat::Union(rhs)) => lhs.eq_ignore_annot(rhs),
+            (Pat::Any, Pat::Any) => true,
+            _ => false,
+        }
     }
 }
 

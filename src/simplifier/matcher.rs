@@ -1,6 +1,8 @@
 use crate::annotater::Annot;
 use crate::data::{Exp, Node, Pat};
 
+use std::collections::HashSet;
+
 /// If the given expression is a match expression which matches a symbol expression, matches the symbol.
 pub fn match_const(ast: Exp<Annot>) -> Exp<Annot> {
     Exp(
@@ -10,11 +12,14 @@ pub fn match_const(ast: Exp<Annot>) -> Exp<Annot> {
                     let arm = arms.into_iter().find(|arm| {
                         assert!(arm.catch_id.is_none());
                         let pat = match &arm.pat {
-                            Pat::Union(Exp(Node::Symbol(pat), _)) => pat,
+                            Pat::Union(pat) => pat,
                             _ => unreachable!(),
                         };
 
-                        pat == &sym
+                        let mut set = HashSet::new();
+                        assert!(pat.union_to_set(&mut set));
+
+                        set.contains(&sym)
                     });
 
                     match arm {

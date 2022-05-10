@@ -149,15 +149,16 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
     }
 
     // Simplify the AAST even further:
-    // - remove get applications, replacing them with match expressions.
     // - remove match captured variables.
     // - remove non tape -> tape applications
     // - remove trivial applications
     // - move matches so that they are at the root of the function expressions.
+    // - match matches with symbols an input.
+    // - remove duplicate match patterns.
     // - merge matches which are used as arguments to other matches.
-    // - switch every get for a match.
-    // - remove non tape -> tape applications
-    // - remove trivial function applications (identity functions and application functions)
+    // - remove get applications, replacing them with match expressions.
+    // - simplify get & set expressions when symbols are already known.
+    // - merge match arms which have equivalent expressions.
     fn final_transform(
         e: data::Exp<annotater::Annot>,
         alphabet: &HashSet<String>,
@@ -172,6 +173,7 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
         let e = simplifier::match_merger::merge_matches(e);
         let e = simplifier::get_remover::remove_gets(e, alphabet);
         let e = simplifier::match_deduper::dedup_matches(e, rec);
+        let e = simplifier::arm_merger::merge_arms(e);
         e
     }
     let ast = ast.transform(&|e| final_transform(e, &alphabet));

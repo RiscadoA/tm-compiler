@@ -1,5 +1,6 @@
 pub mod any_remover;
 pub mod applier;
+pub mod arm_merger;
 pub mod capture_remover;
 pub mod get_remover;
 pub mod id_dedup;
