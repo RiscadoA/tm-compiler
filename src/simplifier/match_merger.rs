@@ -32,7 +32,10 @@ pub fn merge_matches(ast: Exp<Annot>) -> Exp<Annot> {
                                     _ => unreachable!(),
                                 },
                                 Node::Symbol(_) => {}
-                                _ => unreachable!("\n{}\n{:?}\n{}", inner_exp, inner_arm.pat, inner_arm.exp),
+                                _ => unreachable!(
+                                    "\n{}\n{:?}\n{}",
+                                    inner_exp, inner_arm.pat, inner_arm.exp
+                                ),
                             }
                         }
 
@@ -45,9 +48,13 @@ pub fn merge_matches(ast: Exp<Annot>) -> Exp<Annot> {
                         }
                     }
 
-                    Node::Match {
-                        exp: inner_exp,
-                        arms: new_arms,
+                    if new_arms.is_empty() {
+                        Node::Abort
+                    } else {
+                        Node::Match {
+                            exp: inner_exp,
+                            arms: new_arms,
+                        }
                     }
                 } else {
                     Node::Match { exp, arms }
