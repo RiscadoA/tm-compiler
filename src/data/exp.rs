@@ -84,6 +84,61 @@ impl<Annot> Exp<Annot> {
         }
     }
 
+    /// Recursively transforms the expression into a new one, using the given function.
+    /// The function is first called on every subexpression, and then on the current expression.
+    pub fn transform<F>(self, f: &F) -> Exp<Annot>
+    where
+        F: Fn(Exp<Annot>) -> Exp<Annot>,
+    {
+        f(Exp(
+            match self.0 {
+                Node::Union { lhs, rhs } => Node::Union {
+                    lhs: Box::new(lhs.transform(f)),
+                    rhs: Box::new(rhs.transform(f)),
+                },
+
+                Node::Match {
+                    exp: match_exp,
+                    arms,
+                } => Node::Match {
+                    exp: Box::new(match_exp.transform(f)),
+                    arms: arms
+                        .into_iter()
+                        .map(|arm| Arm {
+                            pat: match arm.pat {
+                                Pat::Union(u) => Pat::Union(u.transform(f)),
+                                Pat::Any => Pat::Any,
+                            },
+                            catch_id: arm.catch_id,
+                            exp: arm.exp.transform(f),
+                        })
+                        .collect(),
+                },
+
+                Node::Let { exp, binds } => Node::Let {
+                    exp: Box::new(exp.transform(f)),
+                    binds: binds
+                        .into_iter()
+                        .map(|(id, exp)| (id, exp.transform(f)))
+                        .collect(),
+                },
+
+                Node::Function { arg, exp: func_exp } => Node::Function {
+                    arg,
+                    exp: Box::new(func_exp.transform(f)),
+                },
+
+                Node::Application { func, arg } => Node::Application {
+                    func: Box::new(func.transform(f)),
+                    arg: Box::new(arg.transform(f)),
+                },
+
+                n => n,
+            },
+            self.1,
+        ))
+    }
+
     /// Collects symbols used in the expression, if its a union expression.
     /// If its not a union expression or if its not constant, returns false.
     pub fn union_to_set(&self, symbols: &mut HashSet<String>) -> bool {

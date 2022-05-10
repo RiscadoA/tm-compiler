@@ -98,18 +98,21 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
     }
 
     // Get the set of symbols used by the AST (including those only used during compilation)
-    let mut const_alphabet = HashSet::new();
+    let alphabet = HashSet::from_iter(args.alphabet.iter().map(|s| s.to_owned()));
+    let mut const_alphabet = alphabet.clone();
     ast.collect_symbols(&mut const_alphabet);
 
-    // Apply initial simplifications on the AST:
-    // - replace let statements with function applications
-    // - remove unused variables
-    // - deduplicate identifiers.
+    // Apply initial simplifications on the AST and dedup ids:
+    // - replace let statements with function applications.
     // - remove match 'any' patterns.
-    let ast = simplifier::let_remover::remove_lets(ast);
-    let ast = simplifier::unused_remover::remove_unused(ast);
+    // - remove trivial applications.
+    let ast = ast.transform(&|e| {
+        let e = simplifier::let_remover::remove_lets(e);
+        let e = simplifier::any_remover::remove_any(e, &const_alphabet);
+        let e = simplifier::trivial_remover::remove_trivial(e);
+        e
+    });
     let ast = simplifier::id_dedup::dedup_ids(ast);
-    let ast = simplifier::any_remover::remove_any(ast, &const_alphabet);
     if args.simplified {
         eprintln!("-------- Simplified AST --------");
         eprintln!("{}", ast);
@@ -117,32 +120,23 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
     }
 
     // Annotate the AST with the type of each expression, and check if match patterns are constant.
-    let mut ast = annotater::type_checker::type_check(ast)
+    let ast = annotater::type_checker::type_check(ast)
         .map_err(|e| format!("Type checker error: {}", e))?;
     annotater::const_checker::const_check(&ast)
         .map_err(|e| format!("Const checker error: {}", e))?;
 
-    // Simplify the AST further:
-    // - remove non tape -> tape applications
-    // - remove trivial function applications (identity functions and application functions)
-    loop {
-        let mut changed = false;
-        ast = simplifier::applier::do_applications(ast, &mut changed);
-        ast = simplifier::trivial_remover::remove_trivial(ast, &mut changed);
-        if !changed {
-            break;
-        }
+    // Remove all non tape -> tape applications which can be removed before checking ownership rules.
+    fn ownership_transform(e: data::Exp<annotater::Annot>) -> data::Exp<annotater::Annot> {
+        let e = simplifier::applier::apply(e, |e| e.transform(&ownership_transform));
+        let e = simplifier::trivial_remover::remove_trivial(e);
+        e
     }
-    if args.simplified {
-        eprintln!("-------- Simplified AAST (before union resolver) --------");
-        eprintln!("{}", ast);
-        eprintln!("");
-    }
+    let ast = ast.transform(&ownership_transform);
 
     // Check for ownership errors and resolve the types of unions.
     annotater::ownership_checker::ownership_check(&ast)
         .map_err(|e| format!("Ownership checker error: {}", e))?;
-    let mut ast = annotater::union_resolver::resolve_unions(ast);
+    let ast = annotater::union_resolver::resolve_unions(ast);
     if args.annotated {
         eprintln!("-------- Annotated AST --------");
         eprintln!("{:#}", ast);
@@ -150,25 +144,32 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
     }
 
     // Simplify the AAST even further:
-    // - remove catch ids
-    // - remove duplicated patterns
+    // - remove get applications, replacing them with match expressions.
+    // - remove match captured variables.
+    // - remove non tape -> tape applications
+    // - remove trivial applications
     // - move matches so that they are at the root of the function expressions.
     // - merge matches which are used as arguments to other matches.
     // - switch every get for a match.
     // - remove non tape -> tape applications
     // - remove trivial function applications (identity functions and application functions)
-    loop {
-        let mut changed = false;
-        ast = simplifier::catch_remover::remove_catch(ast, &mut changed);
-        ast = simplifier::pat_dedup::dedup_patterns(ast, &mut changed);
-        ast = simplifier::match_mover::move_matches(ast, &mut changed);
-        ast = simplifier::match_merger::merge_matches(ast, &mut changed)?;
-        ast = simplifier::applier::do_applications(ast, &mut changed);
-        ast = simplifier::trivial_remover::remove_trivial(ast, &mut changed);
-        if !changed {
-            break;
-        }
+    fn final_transform(
+        e: data::Exp<annotater::Annot>,
+        alphabet: &HashSet<String>,
+    ) -> data::Exp<annotater::Annot> {
+        let rec = |e: data::Exp<annotater::Annot>| e.transform(&|e| final_transform(e, alphabet));
+        let e = simplifier::capture_remover::remove_captures(e, rec);
+        let e = simplifier::applier::apply(e, rec);
+        let e = simplifier::trivial_remover::remove_trivial(e);
+        let e = simplifier::match_mover::move_matches(e);
+        let e = simplifier::matcher::match_const(e);
+        let e = simplifier::pat_dedup::dedup_patterns(e);
+        let e = simplifier::match_merger::merge_matches(e);
+        let e = simplifier::get_remover::remove_gets(e, alphabet);
+        let e = simplifier::match_deduper::dedup_matches(e, rec);
+        e
     }
+    let ast = ast.transform(&|e| final_transform(e, &alphabet));
     if args.simplified {
         eprintln!("-------- Simplified AAST --------");
         eprintln!("{:#}", ast);
