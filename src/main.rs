@@ -98,7 +98,12 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
     }
 
     // Get the set of symbols used by the AST (including those only used during compilation)
-    let alphabet = HashSet::from_iter(args.alphabet.iter().map(|s| s.to_owned()));
+    let alphabet = HashSet::from_iter(
+        args.alphabet
+            .iter()
+            .map(|s| s.to_owned())
+            .chain(std::iter::once("".to_owned())),
+    );
     let mut const_alphabet = alphabet.clone();
     ast.collect_symbols(&mut const_alphabet);
 
@@ -183,7 +188,7 @@ fn main() {
     let args = Cli::parse();
 
     // Load the standard library files.
-    let lib = load_lib!("std/bool.tmc", "std/iter.tmc");
+    let lib = load_lib!("std/bool.tmc", "std/iter.tmc", "std/check.tmc");
 
     // Compile with the input arguments and the standard library.
     std::process::exit(if let Err(err) = compile(&args, &lib) {
@@ -201,7 +206,7 @@ mod tests {
 
     #[test]
     fn test_compiler_tests() {
-        let lib = load_lib!("std/bool.tmc", "std/iter.tmc");
+        let lib = load_lib!("std/bool.tmc", "std/iter.tmc", "std/check.tmc");
 
         // Compile every program in the tests directory.
         for entry in std::fs::read_dir("tests").unwrap() {

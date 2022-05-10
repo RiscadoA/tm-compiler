@@ -1,0 +1,6 @@
+# Checks if all symbols on the tape found right until an empty symbol is found are binary digits.
+Y f: t: match get t {
+    '0' | '1' > f (next t),
+    '' > accept,
+    any > reject,
+}

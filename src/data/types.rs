@@ -8,6 +8,7 @@ pub enum Type {
     Symbol,
     Union,
     Tape,
+    Halt,
     Function { arg: Box<Type>, ret: Box<Type> },
     Unresolved(usize),
     UnresolvedUnion(usize),
@@ -51,6 +52,8 @@ impl Type {
                     ret: ret2,
                 },
             ) => arg2.simple_cast(arg) && ret.simple_cast(ret2),
+            (Type::Halt, _) => true,
+            (_, Type::Halt) => true,
             (Type::Symbol, Type::Union) => true,
             (Type::UnresolvedUnion(_), Type::Symbol) => true,
             (Type::UnresolvedUnion(_), Type::Union) => true,
@@ -70,6 +73,7 @@ impl fmt::Display for Type {
             Type::Union => write!(f, "union"),
             Type::Tape => write!(f, "tape"),
             Type::Function { arg, ret } => write!(f, "({} -> {})", arg, ret),
+            Type::Halt => write!(f, "halt"),
             Type::Unresolved(id) => write!(f, "u{}", id),
             Type::UnresolvedUnion(_) => write!(f, "symbol/union"),
         }
@@ -133,12 +137,10 @@ impl TypeTable {
                 assert!(self.resolved.insert(id, Type::UnresolvedUnion(0)).is_none());
             }
 
-            (from, Type::Unresolved(to)) => {
-                assert!(self.resolved.insert(to, from).is_none());
-            }
+            (Type::Halt, Type::Unresolved(_)) | (Type::Unresolved(_), Type::Halt) => (),
 
-            (Type::Unresolved(from), to) => {
-                assert!(self.resolved.insert(from, to).is_none());
+            (t, Type::Unresolved(id)) | (Type::Unresolved(id), t) => {
+                assert!(self.resolved.insert(id, t).is_none());
             }
 
             (from, to) => {

@@ -28,11 +28,14 @@ const PUNCTUATION: [(char, &Token); 10] = [
 ];
 
 // All keywords except import.
-const KEYWORDS: [(&str, &Token); 4] = [
+const KEYWORDS: [(&str, &Token); 7] = [
     ("match", &Token::Match),
     ("any", &Token::Any),
     ("let", &Token::Let),
     ("in", &Token::In),
+    ("accept", &Token::Accept),
+    ("reject", &Token::Reject),
+    ("abort", &Token::Abort),
 ];
 
 /// Converts a string into a vector of tokens.

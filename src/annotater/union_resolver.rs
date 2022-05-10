@@ -1,6 +1,6 @@
 use super::Annot;
 use crate::data::{Arm, Exp, Node, Pat, Type};
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 /// Fixes a type annotated AST by resolving every unresolved union type.
 pub fn resolve_unions(ast: Exp<Annot>) -> Exp<Annot> {
@@ -39,12 +39,11 @@ fn fix_ids(exp: Exp<Annot>, count: &mut usize) -> Exp<Annot> {
 
     Exp(
         match exp.0 {
-            Node::Identifier(id) => Node::Identifier(id),
-            Node::Symbol(sym) => Node::Symbol(sym),
             Node::Union { lhs, rhs } => Node::Union {
                 lhs: Box::new(fix_ids(*lhs, count)),
                 rhs: Box::new(fix_ids(*rhs, count)),
             },
+
             Node::Match { exp, arms } => Node::Match {
                 exp: Box::new(fix_ids(*exp, count)),
                 arms: arms
@@ -59,15 +58,18 @@ fn fix_ids(exp: Exp<Annot>, count: &mut usize) -> Exp<Annot> {
                     })
                     .collect(),
             },
+
             Node::Function { arg, exp } => Node::Function {
                 arg,
                 exp: Box::new(fix_ids(*exp, count)),
             },
+
             Node::Application { func, arg } => Node::Application {
                 func: Box::new(fix_ids(*func, count)),
                 arg: Box::new(fix_ids(*arg, count)),
             },
-            _ => unreachable!(),
+
+            n => n,
         },
         annot,
     )
@@ -241,12 +243,11 @@ fn remove_unresolved(exp: Exp<Annot>, types: &[Type]) -> Exp<Annot> {
 
     Exp(
         match exp.0 {
-            Node::Identifier(id) => Node::Identifier(id),
-            Node::Symbol(sym) => Node::Symbol(sym),
             Node::Union { lhs, rhs } => Node::Union {
                 lhs: Box::new(remove_unresolved(*lhs, types)),
                 rhs: Box::new(remove_unresolved(*rhs, types)),
             },
+
             Node::Match { exp, arms } => Node::Match {
                 exp: Box::new(remove_unresolved(*exp, types)),
                 arms: arms
@@ -261,15 +262,18 @@ fn remove_unresolved(exp: Exp<Annot>, types: &[Type]) -> Exp<Annot> {
                     })
                     .collect(),
             },
+
             Node::Function { arg, exp } => Node::Function {
                 arg,
                 exp: Box::new(remove_unresolved(*exp, types)),
             },
+
             Node::Application { func, arg } => Node::Application {
                 func: Box::new(remove_unresolved(*func, types)),
                 arg: Box::new(remove_unresolved(*arg, types)),
             },
-            _ => unreachable!(),
+
+            n => n,
         },
         annot,
     )

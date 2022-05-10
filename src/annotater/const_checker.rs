@@ -12,6 +12,7 @@ fn is_const(exp: &Exp<Annot>, const_exps: &HashSet<String>) -> Result<bool, Stri
     match &exp.0 {
         Node::Identifier(id) => Ok(const_exps.contains(id)),
         Node::Symbol(_) => Ok(true),
+        Node::Accept | Node::Reject | Node::Abort => Ok(true),
         Node::Union { lhs, rhs } => {
             let mut ret = true;
             ret &= is_const(lhs, const_exps)?;

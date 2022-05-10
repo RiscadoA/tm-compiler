@@ -56,6 +56,10 @@ fn check_exp(
             Ok(Exp(Node::Symbol(sym), Annot(Type::Symbol, exp.1)))
         }
 
+        Node::Accept => Ok(Exp(Node::Accept, Annot(Type::Halt, exp.1))),
+        Node::Reject => Ok(Exp(Node::Reject, Annot(Type::Halt, exp.1))),
+        Node::Abort => Ok(Exp(Node::Abort, Annot(Type::Halt, exp.1))),
+
         Node::Union { lhs, rhs } => {
             let lhs = check_exp(*lhs, vars, type_table, &Type::Union)?;
             let rhs = check_exp(*rhs, vars, type_table, &Type::Union)?;
