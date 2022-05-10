@@ -2,6 +2,7 @@ let
     flip = s: match s {
         '0' > '1',
         '1' > '0',
+        x @ any > x,
     },
 in
     t: set match flip (get t) {
@@ -9,5 +10,6 @@ in
         flip '1' > '0',
         x @ any > match x {
             'a' > 'b',
+            x @ any > x,
         },
     } t
