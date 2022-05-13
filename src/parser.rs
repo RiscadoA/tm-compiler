@@ -111,8 +111,6 @@ fn parse_term(toks: Stream) -> Result {
         Ok(Some((toks, exp)))
     } else if let Some((toks, exp)) = parse_symbol(toks)? {
         Ok(Some((toks, exp)))
-    } else if let Some((toks, exp)) = parse_halt(toks)? {
-        Ok(Some((toks, exp)))
     } else {
         Ok(None)
     }
@@ -282,21 +280,6 @@ fn parse_symbol(toks: Stream) -> Result {
         }
         _ => None,
     })
-}
-
-/// Parses an halt expression.
-fn parse_halt(toks: Stream) -> Result {
-    Ok(
-        if let Some((toks, loc)) = accept_token(toks, Token::Accept) {
-            Some((toks, Exp(Node::Accept, loc.clone())))
-        } else if let Some((toks, loc)) = accept_token(toks, Token::Reject) {
-            Some((toks, Exp(Node::Reject, loc.clone())))
-        } else if let Some((toks, loc)) = accept_token(toks, Token::Abort) {
-            Some((toks, Exp(Node::Abort, loc.clone())))
-        } else {
-            None
-        },
-    )
 }
 
 /// Checks if the first token in the stream is an identifier, and if it is, returns the rest of the stream.

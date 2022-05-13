@@ -58,9 +58,9 @@ fn traverse(exp: &Exp<Annot>, consumed: &mut HashSet<String>, is_ref: bool) -> R
                     traverse(func, consumed, false)?;
                     traverse(arg, consumed, true)?;
                 }
-                (Type::Tape, o) if o != &Type::Tape => {
+                (Type::Tape, o) if o != &Type::Tape && o != &Type::Halt => {
                     return Err(format!(
-                        "Function at {} receives tape as argument but returns {}, while only tape & symbol are allowed",
+                        "Function at {} receives tape as argument but returns {}, while only tape, symbol or halt are allowed",
                         func.1.1,
                         o
                     ));

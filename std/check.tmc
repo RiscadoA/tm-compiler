@@ -4,7 +4,7 @@ let
     # It takes two (tape -> tape) functions, has for the true case and one for the false case.
     # It also takes the tape to be checked, and then returns the tape after the correct function has been applied.
 
-    # Generate a generic check on the tape.
+    # Generates a generic check on the tape.
     # - it    (tape -> tape)     - Called on the tape before the condition is evaluated.
     # - cond  (symbol -> symbol) - Condition used for the check, which receives the symbol on the tape and returns either 'true' or 'false'.
     # - e1    (tape -> tape)     - Called on the tape if the condition is true.
@@ -18,7 +18,7 @@ let
             false > e2 t,
         },
 
-    # Checks if all symbols in a section of the tape fulfill a condition.
+    # Generates a check which sees if all symbols in a section of the tape fulfill a condition.
     # - cond   (symbol -> symbol) - Condition used for check, which receives a symbol and returns either 'true' or 'false'.
     # - step   (tape -> tape)     - Called for each step of the iteration.
     # - end    (symbol -> symbol) - Symbol used to mark the end of the section.

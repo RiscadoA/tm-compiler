@@ -5,9 +5,6 @@ use std::fmt;
 pub enum Node<Annot> {
     Identifier(String),
     Symbol(String),
-    Accept,
-    Reject,
-    Abort,
 
     Union {
         lhs: Box<Exp<Annot>>,
@@ -60,9 +57,6 @@ impl<Annot> Exp<Annot> {
         match (&self.0, &other.0) {
             (Node::Identifier(id), Node::Identifier(id2)) => id == id2,
             (Node::Symbol(sym), Node::Symbol(sym2)) => sym == sym2,
-            (Node::Accept, Node::Accept) => true,
-            (Node::Reject, Node::Reject) => true,
-            (Node::Abort, Node::Abort) => true,
             (
                 Node::Union { lhs, rhs },
                 Node::Union {
@@ -75,7 +69,11 @@ impl<Annot> Exp<Annot> {
                 } else {
                     let mut set1 = HashSet::new();
                     let mut set2 = HashSet::new();
-                    if lhs.union_to_set(&mut set1) && rhs.union_to_set(&mut set2) {
+                    if lhs.union_to_set(&mut set1)
+                        && rhs.union_to_set(&mut set1)
+                        && lhs2.union_to_set(&mut set2)
+                        && rhs2.union_to_set(&mut set2)
+                    {
                         set1 == set2
                     } else {
                         false
@@ -286,9 +284,6 @@ where
     match &exp.0 {
         Node::Identifier(id) => writeln!(f, "{}{}", id, annot),
         Node::Symbol(sym) => writeln!(f, "'{}'{}", sym, annot),
-        Node::Accept => writeln!(f, "accept{}", annot),
-        Node::Reject => writeln!(f, "reject{}", annot),
-        Node::Abort => writeln!(f, "abort{}", annot),
         Node::Union { lhs, rhs } => {
             writeln!(f, "|{}", annot)?;
             fmt_expression(f, &lhs, indent + 1)?;

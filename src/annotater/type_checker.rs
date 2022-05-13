@@ -56,21 +56,6 @@ fn check_exp(
             Ok(Exp(Node::Symbol(sym), Annot(Type::Symbol, exp.1)))
         }
 
-        Node::Accept => {
-            type_table.cast(&Type::Halt, ret_t, &exp.1)?;
-            Ok(Exp(Node::Accept, Annot(Type::Halt, exp.1)))
-        }
-
-        Node::Reject => {
-            type_table.cast(&Type::Halt, ret_t, &exp.1)?;
-            Ok(Exp(Node::Reject, Annot(Type::Halt, exp.1)))
-        }
-
-        Node::Abort => {
-            type_table.cast(&Type::Halt, ret_t, &exp.1)?;
-            Ok(Exp(Node::Abort, Annot(Type::Halt, exp.1)))
-        }
-
         Node::Union { lhs, rhs } => {
             let lhs = check_exp(*lhs, vars, type_table, &Type::Union)?;
             let rhs = check_exp(*rhs, vars, type_table, &Type::Union)?;
@@ -273,7 +258,34 @@ fn resolve_exp(
 fn define_builtin_functions() -> HashMap<String, Type> {
     let mut vars = HashMap::new();
 
-    // set Symbol Tape -> Tape
+    // accept :: tape -> halt
+    vars.insert(
+        "accept".to_owned(),
+        Type::Function {
+            arg: Box::new(Type::Tape),
+            ret: Box::new(Type::Halt),
+        },
+    );
+
+    // reject :: tape -> halt
+    vars.insert(
+        "reject".to_owned(),
+        Type::Function {
+            arg: Box::new(Type::Tape),
+            ret: Box::new(Type::Halt),
+        },
+    );
+
+    // abort :: tape -> halt
+    vars.insert(
+        "abort".to_owned(),
+        Type::Function {
+            arg: Box::new(Type::Tape),
+            ret: Box::new(Type::Halt),
+        },
+    );
+
+    // set :: symbol -> tape -> tape
     vars.insert(
         "set".to_owned(),
         Type::Function {
@@ -285,7 +297,7 @@ fn define_builtin_functions() -> HashMap<String, Type> {
         },
     );
 
-    // get &Tape -> Symbol
+    // get :: tape -> symbol
     vars.insert(
         "get".to_owned(),
         Type::Function {
@@ -294,7 +306,7 @@ fn define_builtin_functions() -> HashMap<String, Type> {
         },
     );
 
-    // next Tape -> Tape
+    // next :: tape -> tape
     vars.insert(
         "next".to_owned(),
         Type::Function {
@@ -303,7 +315,7 @@ fn define_builtin_functions() -> HashMap<String, Type> {
         },
     );
 
-    // prev Tape -> Tape
+    // prev :: tape -> tape
     vars.insert(
         "prev".to_owned(),
         Type::Function {
@@ -312,7 +324,7 @@ fn define_builtin_functions() -> HashMap<String, Type> {
         },
     );
 
-    // Y ((Tape -> Tape) -> Tape -> Tape) -> (Tape -> Tape)
+    // Y :: ((tape -> tape) -> tape -> tape) -> (tape -> tape)
     vars.insert(
         "Y".to_owned(),
         Type::Function {

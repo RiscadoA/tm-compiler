@@ -24,7 +24,10 @@ pub fn match_const(ast: Exp<Annot>) -> Exp<Annot> {
 
                     match arm {
                         Some(arm) => return arm.exp,
-                        None => Node::Abort,
+                        None => Node::Match {
+                            exp: Box::new(Exp(Node::Symbol(sym), exp.1)),
+                            arms: Vec::new(),
+                        },
                     }
                 }
 

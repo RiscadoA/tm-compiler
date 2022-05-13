@@ -2,7 +2,9 @@ use super::id_replacer::replace_id;
 use crate::annotater::Annot;
 use crate::data::{Exp, Node, Type};
 
-/// If the given expression is a non tape -> tape function application, it is applied.
+/// Applies the given expression if it is either:
+/// - a non tape -> tape function application
+/// - a tape -> tape function application with an identifier as argument
 pub fn apply<F>(ast: Exp<Annot>, rec: F) -> Exp<Annot>
 where
     F: Fn(Exp<Annot>) -> Exp<Annot>,
@@ -16,7 +18,10 @@ where
                     unreachable!()
                 };
 
-                if &**arg_t != &Type::Tape || &**ret_t != &Type::Tape {
+                if &**arg_t != &Type::Tape
+                    || &**ret_t != &Type::Tape
+                    || matches!(arg.0, Node::Identifier(_))
+                {
                     if let Node::Function { arg: arg_id, exp } = func.0 {
                         return rec(replace_id(*exp, &arg_id, &arg));
                     }

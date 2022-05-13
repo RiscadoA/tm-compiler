@@ -181,6 +181,8 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
         e
     }
     let ast = ast.transform(&|e| final_transform(e, &alphabet));
+    let ast = ast.transform(&simplifier::arm_merger::merge_arms);
+
     if args.simplified {
         eprintln!("-------- Simplified AAST --------");
         eprintln!("{:#}", ast);
