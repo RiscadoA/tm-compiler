@@ -171,6 +171,7 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
         let e = simplifier::capture_remover::remove_captures(e, rec);
         let e = simplifier::applier::apply(e, rec);
         let e = simplifier::trivial_remover::remove_trivial(e);
+        let e = simplifier::abort_spreader::spread_aborts(e);
         let e = simplifier::match_mover::move_matches(e);
         let e = simplifier::matcher::match_const(e);
         let e = simplifier::pat_dedup::dedup_patterns(e);
@@ -188,6 +189,8 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
         eprintln!("{:#}", ast);
         eprintln!("");
     }
+
+    // Generate the turing machine from the AAST:
 
     Ok(())
 }

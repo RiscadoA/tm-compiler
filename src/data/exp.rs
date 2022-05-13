@@ -5,6 +5,7 @@ use std::fmt;
 pub enum Node<Annot> {
     Identifier(String),
     Symbol(String),
+    Abort,
 
     Union {
         lhs: Box<Exp<Annot>>,
@@ -57,6 +58,7 @@ impl<Annot> Exp<Annot> {
         match (&self.0, &other.0) {
             (Node::Identifier(id), Node::Identifier(id2)) => id == id2,
             (Node::Symbol(sym), Node::Symbol(sym2)) => sym == sym2,
+            (Node::Abort, Node::Abort) => true,
             (
                 Node::Union { lhs, rhs },
                 Node::Union {
@@ -284,6 +286,7 @@ where
     match &exp.0 {
         Node::Identifier(id) => writeln!(f, "{}{}", id, annot),
         Node::Symbol(sym) => writeln!(f, "'{}'{}", sym, annot),
+        Node::Abort => writeln!(f, "abort{}", annot),
         Node::Union { lhs, rhs } => {
             writeln!(f, "|{}", annot)?;
             fmt_expression(f, &lhs, indent + 1)?;
