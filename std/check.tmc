@@ -1,0 +1,34 @@
+import 'std/iter.tmc'
+let
+    # A generic check function has the type (tape -> tape) -> (tape -> tape) -> tape -> tape.
+    # It takes two (tape -> tape) functions, has for the true case and one for the false case.
+    # It also takes the tape to be checked, and then returns the tape after the correct function has been applied.
+
+    # Generate a generic check on the tape.
+    # - it    (tape -> tape)     - Called on the tape before the condition is evaluated.
+    # - cond  (symbol -> symbol) - Condition used for the check, which receives the symbol on the tape and returns either 'true' or 'false'.
+    # - e1    (tape -> tape)     - Called on the tape if the condition is true.
+    # - e2    (tape -> tape)     - Called on the tape if the condition is false.
+    # - t     (tape)             - Tape to be checked.
+    # > ret   (tape)             - Tape returned by either e1 or e2.
+    check = it: cond: e1: e2: t:
+        let t = it t, in
+        match cond (get t) {
+            true  > e1 t,
+            false > e2 t,
+        },
+
+    # Checks if all symbols in a section of the tape fulfill a condition.
+    # - cond   (symbol -> symbol) - Condition used for check, which receives a symbol and returns either 'true' or 'false'.
+    # - step   (tape -> tape)     - Called for each step of the iteration.
+    # - end    (symbol -> symbol) - Symbol used to mark the end of the section.
+    # - e1     (tape -> tape)     - Called on the tape, at the end of the section, if the condition is true.
+    # - e2     (tape -> tape)     - Called on the tape, at the end of the section, if the condition is false.
+    # - t      (tape)             - Tape to be checked.
+    # > ret    (tape)             - Tape returned by either e1 or e2.
+    check_all = cond: step: end: e1: e2: check
+            (iter (s: or (not (cond s)) (end s)) step) # Step until either the condition is true or the end is reached.
+            end
+            e1
+            (t: e2 (iter end step t)), # If the condition is false, move to the end of the section.
+in

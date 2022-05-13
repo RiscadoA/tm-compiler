@@ -1,38 +1,46 @@
 let
     # Symbols used for representing boolean values.
-    true = 'true',
-    false = 'false',
+    true  ? '1',
+    false ? '0',
+    bool = true | false,
 
-    # Negates a boolean value.
-    # - b (symbol) - The boolean value to negate (true or false)
+    # - b   (bool) - The boolean value to negate (true or false)
+    # > ret (bool) - The negated boolean value
     not = b: match b {
         true  > false,
         false > true,
     },
 
-    # Returns the logical or of two boolean values.
-    # - b1 (symbol) - The first boolean value
-    # - b2 (symbol) - The second boolean value
+    # - b1  (bool) - The first boolean value
+    # - b2  (bool) - The second boolean value
+    # > ret (bool) - The logical or of the two boolean values
     or = b1: b2: match b1 {
         true  > true,
-        false > b1,
+        false > b2,
     },
 
-    # Returns the logical and of two boolean values.
-    # - b1 (symbol) - The first boolean value
-    # - b2 (symbol) - The second boolean value
+    # - b1  (bool) - The first boolean value
+    # - b2  (bool) - The second boolean value
+    # > ret (bool) - The logical and of the two boolean values
     and = b1: b2: match b1 {
         true  > b2,
         false > false,
     },
 
-    # Checks if the given symbol is part of a union of symbols, and if so, returns true. Otherwise, returns false.
+    # Checks if the given symbol is part of a union of symbols.
     # - pat (union)  - The union of symbols.
     # - x   (symbol) - The symbol to check.
+    # > ret (bool)   - True if the symbol is part of the union, false otherwise.
     is = pat: x: match x {
         pat > true,
         any > false,
     },
 
-
+    # Asserts that the given boolean is true, and if it is, returns the given tape.
+    # - b   (bool) - The boolean to assert.
+    # - t   (tape) - The tape to return if the boolean is true.
+    # > ret (tape) - The tape if the boolean is true, otherwise the program aborts.
+    assert = b: t: match b {
+        true > t,
+    },
 in
