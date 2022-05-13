@@ -204,7 +204,14 @@ fn parse_let(toks: Stream) -> Result {
         }
 
         let (t, id, _) = expect_identifier(toks, "while parsing let expression")?;
-        let (t, loc) = expect_token(t, Token::Assign, "while parsing let binding")?;
+
+        let (t, loc, optional) = if let Some((t, loc)) = accept_token(t, Token::Optional) {
+            (t, loc, true)
+        } else {
+            let (t, loc) = expect_token(t, Token::Assign, "while parsing let binding")?;
+            (t, loc, false)
+        };
+
         let (t, exp) = parse_exp(t)?.ok_or(format!(
             "Expected expression but found {} after {} (while parsing let binding)",
             match t.get(0) {
@@ -216,7 +223,7 @@ fn parse_let(toks: Stream) -> Result {
 
         let (t, _) = expect_token(t, Token::Comma, "while parsing let expression")?;
         toks = t;
-        binds.push((id, exp))
+        binds.push((id, optional, exp))
     };
 
     let (toks, exp) = parse_exp(toks)?.ok_or(format!(

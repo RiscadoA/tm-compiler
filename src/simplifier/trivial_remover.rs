@@ -84,12 +84,11 @@ fn uses_id<Annot>(ast: &Exp<Annot>, id: &str) -> bool {
         } => {
             uses_id(match_exp, id)
                 || arms.iter().any(|arm| {
-                    arm.catch_id != Some(id.to_owned())
-                        && (uses_id(&arm.exp, id)
-                            || match &arm.pat {
-                                Pat::Union(exp) => uses_id(exp, id),
-                                Pat::Any => unreachable!(),
-                            })
+                    (arm.catch_id != Some(id.to_owned()) && uses_id(&arm.exp, id))
+                        || match &arm.pat {
+                            Pat::Union(exp) => uses_id(exp, id),
+                            Pat::Any => unreachable!(),
+                        }
                 })
         }
         Node::Function { arg, exp } if arg != id => uses_id(exp, id),

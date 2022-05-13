@@ -21,7 +21,7 @@ pub enum Node<Annot> {
 
     Let {
         exp: Box<Exp<Annot>>,
-        binds: Vec<(String, Exp<Annot>)>,
+        binds: Vec<(String, bool, Exp<Annot>)>,
     },
 
     Function {
@@ -112,7 +112,7 @@ impl<Annot> Exp<Annot> {
                     && binds
                         .iter()
                         .zip(binds2.iter())
-                        .all(|(b1, b2)| b1.0 == b2.0 && b1.1.eq_ignore_annot(&b2.1))
+                        .all(|(b1, b2)| b1.0 == b2.0 && b1.1 == b1.1 && b1.2.eq_ignore_annot(&b2.2))
             }
             (
                 Node::Function { arg, exp },
@@ -149,7 +149,7 @@ impl<Annot> Exp<Annot> {
             }
             Node::Let { exp, binds } => {
                 exp.collect_symbols(set);
-                for (_, exp) in binds {
+                for (_, _, exp) in binds {
                     exp.collect_symbols(set);
                 }
             }
@@ -199,7 +199,7 @@ impl<Annot> Exp<Annot> {
                     exp: Box::new(exp.transform(f)),
                     binds: binds
                         .into_iter()
-                        .map(|(id, exp)| (id, exp.transform(f)))
+                        .map(|(id, optional, exp)| (id, optional, exp.transform(f)))
                         .collect(),
                 },
 
@@ -318,9 +318,9 @@ where
         }
         Node::Let { exp: body, binds } => {
             writeln!(f, "let{}", annot)?;
-            for (id, exp) in binds {
+            for (id, optional, exp) in binds {
                 fmt_indent(f, indent + 1)?;
-                writeln!(f, "{} =", id)?;
+                writeln!(f, "{} {}", id, if *optional { "?" } else { "=" })?;
                 fmt_expression(f, &exp, indent + 2)?;
             }
 

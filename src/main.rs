@@ -107,16 +107,20 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
     let mut const_alphabet = alphabet.clone();
     ast.collect_symbols(&mut const_alphabet);
 
+    // Remove unused optional let bindings from the AST.
+    let ast = simplifier::optionals_remover::remove_optionals(ast);
+
     // Apply initial simplifications on the AST and dedup ids:
     // - replace let statements with function applications.
     // - remove match 'any' patterns.
     // - remove trivial applications.
+    let ast = ast.transform(&simplifier::let_remover::remove_lets);
     let ast = ast.transform(&|e| {
-        let e = simplifier::let_remover::remove_lets(e);
         let e = simplifier::any_remover::remove_any(e, &const_alphabet);
         let e = simplifier::trivial_remover::remove_trivial(e);
         e
     });
+
     let ast = simplifier::id_dedup::dedup_ids(ast);
     if args.simplified {
         eprintln!("-------- Simplified AST --------");

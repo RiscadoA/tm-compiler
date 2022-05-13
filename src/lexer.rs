@@ -14,7 +14,7 @@ struct State<'a, 'b> {
 }
 
 // All single character punctuation characters.
-const PUNCTUATION: [(char, &Token); 10] = [
+const PUNCTUATION: [(char, &Token); 11] = [
     ('(', &Token::LParenthesis),
     (')', &Token::RParenthesis),
     ('{', &Token::LBraces),
@@ -22,6 +22,7 @@ const PUNCTUATION: [(char, &Token); 10] = [
     (':', &Token::Colon),
     ('>', &Token::Arrow),
     ('=', &Token::Assign),
+    ('?', &Token::Optional),
     (',', &Token::Comma),
     ('|', &Token::Pipe),
     ('@', &Token::Catch),

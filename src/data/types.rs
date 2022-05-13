@@ -52,6 +52,8 @@ impl Type {
                     ret: ret2,
                 },
             ) => arg2.simple_cast(arg) && ret.simple_cast(ret2),
+            (Type::Halt, Type::Function { .. }) => false,
+            (Type::Function { .. }, Type::Halt) => false,
             (Type::Halt, _) => true,
             (_, Type::Halt) => true,
             (Type::Symbol, Type::Union) => true,

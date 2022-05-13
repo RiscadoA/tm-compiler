@@ -24,8 +24,8 @@ pub fn type_check(ast: Exp<TokenLoc>) -> Result<Exp<Annot>, String> {
         &ast_t,
     )?;
 
-    ast.1 = Annot(ast_t, ast.1 .1); // Force the type to owned tape.
-    resolve_exp(ast, &mut type_table, false)
+    ast.1 = Annot(ast_t.clone(), ast.1 .1); // Force the type to owned tape.
+    resolve_exp(ast, &mut type_table, false, &ast_t)
 }
 
 /// Checks the types of an expression.
@@ -56,9 +56,20 @@ fn check_exp(
             Ok(Exp(Node::Symbol(sym), Annot(Type::Symbol, exp.1)))
         }
 
-        Node::Accept => Ok(Exp(Node::Accept, Annot(Type::Halt, exp.1))),
-        Node::Reject => Ok(Exp(Node::Reject, Annot(Type::Halt, exp.1))),
-        Node::Abort => Ok(Exp(Node::Abort, Annot(Type::Halt, exp.1))),
+        Node::Accept => {
+            type_table.cast(&Type::Halt, ret_t, &exp.1)?;
+            Ok(Exp(Node::Accept, Annot(Type::Halt, exp.1)))
+        }
+
+        Node::Reject => {
+            type_table.cast(&Type::Halt, ret_t, &exp.1)?;
+            Ok(Exp(Node::Reject, Annot(Type::Halt, exp.1)))
+        }
+
+        Node::Abort => {
+            type_table.cast(&Type::Halt, ret_t, &exp.1)?;
+            Ok(Exp(Node::Abort, Annot(Type::Halt, exp.1)))
+        }
 
         Node::Union { lhs, rhs } => {
             let lhs = check_exp(*lhs, vars, type_table, &Type::Union)?;
@@ -164,12 +175,13 @@ fn resolve_exp(
     exp: Exp<Annot>,
     type_table: &mut TypeTable,
     allow_unresolved: bool,
+    ret_t: &Type,
 ) -> Result<Exp<Annot>, String> {
     let exp = match exp.0 {
         Node::Union { lhs, rhs } => Exp(
             Node::Union {
-                lhs: Box::new(resolve_exp(*lhs, type_table, false)?),
-                rhs: Box::new(resolve_exp(*rhs, type_table, false)?),
+                lhs: Box::new(resolve_exp(*lhs, type_table, false, &Type::Union)?),
+                rhs: Box::new(resolve_exp(*rhs, type_table, false, &Type::Union)?),
             },
             Annot(Type::Union, exp.1 .1),
         ),
@@ -178,19 +190,19 @@ fn resolve_exp(
             exp: match_exp,
             arms,
         } => {
-            let match_exp = resolve_exp(*match_exp, type_table, false)?;
+            let match_exp = resolve_exp(*match_exp, type_table, false, &Type::Symbol)?;
 
             let mut new_arms = Vec::new();
             for arm in arms.into_iter() {
                 let pat = match arm.pat {
                     Pat::Union(exp) => {
-                        let exp = resolve_exp(exp, type_table, false)?;
+                        let exp = resolve_exp(exp, type_table, false, &Type::Union)?;
                         Pat::Union(exp)
                     }
                     Pat::Any => Pat::Any,
                 };
 
-                let exp = resolve_exp(arm.exp, type_table, allow_unresolved)?;
+                let exp = resolve_exp(arm.exp, type_table, allow_unresolved, &exp.1 .0)?;
                 new_arms.push(Arm {
                     catch_id: arm.catch_id,
                     pat,
@@ -207,21 +219,40 @@ fn resolve_exp(
             )
         }
 
-        Node::Function { arg, exp: body_exp } => Exp(
-            Node::Function {
-                arg,
-                exp: Box::new(resolve_exp(*body_exp, type_table, allow_unresolved)?),
-            },
-            Annot(type_table.resolve(&exp.1 .0), exp.1 .1),
-        ),
+        Node::Function { arg, exp: body_exp } => {
+            let ret = if let Type::Function { ret, .. } = type_table.resolve(&exp.1 .0) {
+                *ret
+            } else {
+                unreachable!()
+            };
 
-        Node::Application { func, arg } => Exp(
-            Node::Application {
-                func: Box::new(resolve_exp(*func, type_table, allow_unresolved)?),
-                arg: Box::new(resolve_exp(*arg, type_table, allow_unresolved)?),
-            },
-            Annot(type_table.resolve(&exp.1 .0), exp.1 .1),
-        ),
+            Exp(
+                Node::Function {
+                    arg,
+                    exp: Box::new(resolve_exp(*body_exp, type_table, allow_unresolved, &ret)?),
+                },
+                Annot(type_table.resolve(&exp.1 .0), exp.1 .1),
+            )
+        }
+
+        Node::Application { func, arg } => {
+            let func_t = type_table.resolve(&func.1 .0);
+            let arg_t = if let Type::Function { arg, ret } = &func_t {
+                type_table.cast(ret, ret_t, &func.1 .1)?;
+                arg
+            } else {
+                unreachable!()
+            };
+
+            let func = resolve_exp(*func, type_table, allow_unresolved, &func_t)?;
+            Exp(
+                Node::Application {
+                    func: Box::new(func),
+                    arg: Box::new(resolve_exp(*arg, type_table, allow_unresolved, arg_t)?),
+                },
+                Annot(type_table.resolve(&exp.1 .0), exp.1 .1),
+            )
+        }
 
         node => Exp(node, Annot(type_table.resolve(&exp.1 .0), exp.1 .1)),
     };
@@ -232,6 +263,8 @@ fn resolve_exp(
             exp.1 .0, exp.1 .1
         ))
     } else {
+        // Make sure the type can be cast to the return type.
+        type_table.cast(&exp.1 .0, ret_t, &exp.1 .1)?;
         Ok(exp)
     }
 }

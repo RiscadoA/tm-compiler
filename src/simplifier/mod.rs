@@ -9,6 +9,7 @@ pub mod match_deduper;
 pub mod match_merger;
 pub mod match_mover;
 pub mod matcher;
+pub mod optionals_remover;
 pub mod pat_dedup;
 pub mod trivial_remover;
 

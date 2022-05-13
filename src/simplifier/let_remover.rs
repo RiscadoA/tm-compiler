@@ -8,7 +8,7 @@ where
     Exp(
         match ast.0 {
             Node::Let { mut exp, binds } => {
-                for (id, bind) in binds.into_iter().rev() {
+                for (id, _, bind) in binds.into_iter().rev() {
                     let annot = bind.1.clone();
                     exp = Box::new(Exp(
                         Node::Application {

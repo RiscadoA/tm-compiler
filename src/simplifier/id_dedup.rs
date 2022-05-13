@@ -49,21 +49,6 @@ where
                     .collect(),
             },
 
-            Node::Let { exp, binds } => {
-                let mut renames = renames.clone();
-                let mut new_binds = Vec::new();
-                for (id, exp) in binds {
-                    let exp = traverse(exp, &renames);
-                    let id = push_id(&mut renames, id);
-                    new_binds.push((id, exp));
-                }
-
-                Node::Let {
-                    exp: Box::new(traverse(*exp, &renames)),
-                    binds: new_binds,
-                }
-            }
-
             Node::Function { arg, exp } => {
                 let mut renames = renames.clone();
                 let arg = push_id(&mut renames, arg);
