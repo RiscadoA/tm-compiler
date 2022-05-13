@@ -1,10 +1,11 @@
-use clap::{ArgGroup, Parser};
+use clap::{ArgEnum, ArgGroup, Parser};
 
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
 
 mod annotater;
 mod data;
+mod exporter;
 mod lexer;
 mod parser;
 mod simplifier;
@@ -35,6 +36,12 @@ macro_rules! load_lib {
     }
 }
 
+#[derive(Debug, Clone, ArgEnum)]
+enum Format {
+    /// Turing machine format used at https://github.com/awmorp/turing
+    Awmorp,
+}
+
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
 #[clap(group(
@@ -47,8 +54,8 @@ struct Cli {
     #[clap(parse(from_os_str))]
     path: Option<std::path::PathBuf>,
     /// The format used to print the resulting turing machine.
-    #[clap(short, long)]
-    format: Option<String>,
+    #[clap(arg_enum, default_value = "awmorp")]
+    format: Format,
 
     /// The working alphabet of the turing machine.
     #[clap(short, long, required = true, multiple_values = true)]
@@ -72,7 +79,7 @@ struct Cli {
     simplified: bool,
 }
 
-fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
+fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<String, String> {
     // Tokenize input.
     let toks = if args.stdin {
         let mut src = String::new();
@@ -191,8 +198,13 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<(), String> {
     }
 
     // Generate the turing machine from the AAST:
+    let machine = data::Machine::new();
 
-    Ok(())
+    // Export the machine to the desired format.
+    Ok(match args.format {
+        Format::Awmorp => exporter::awmorp::export(machine)
+            .map_err(|e| format!("Awmorp exporter error: {}", e))?,
+    })
 }
 
 fn main() {
@@ -202,13 +214,16 @@ fn main() {
     let lib = load_lib!("std/bool.tmc", "std/iter.tmc", "std/check.tmc");
 
     // Compile with the input arguments and the standard library.
-    std::process::exit(if let Err(err) = compile(&args, &lib) {
-        eprintln!("Compilation failed: {}", err);
-        1
-    } else {
-        eprintln!("Compilation successful!");
-        0
-    });
+    std::process::exit(match compile(&args, &lib) {
+        Err(err) => {
+            eprintln!("Compilation failed: {}", err);
+            1
+        }
+        Ok(output) => {
+            println!("{}", output);
+            0
+        }
+    })
 }
 
 #[cfg(test)]
@@ -233,7 +248,7 @@ mod tests {
                             .map(|s| s.to_string())
                             .collect(),
                         path: Some(path.clone()),
-                        format: None,
+                        format: Format::Awmorp,
                         stdin: false,
                         tokens: false,
                         parser: false,

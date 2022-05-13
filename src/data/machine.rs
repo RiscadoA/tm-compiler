@@ -1,8 +1,17 @@
+/// Represents a possible direction for a machine to move in.
+#[derive(Debug, Copy, Clone)]
+pub enum Direction {
+    Left,
+    Right,
+    Stay,
+}
+
 /// Internal representation of a turing machine transition.
 #[derive(Debug, Clone)]
 pub struct Transition {
     pub from: (usize, Option<String>),
     pub to: (usize, Option<String>),
+    pub dir: Direction,
 }
 
 /// Internal representation of a turing machine, used by the generator.
@@ -58,6 +67,7 @@ impl Machine {
             .extend(other.transitions.iter().map(|t| Transition {
                 from: (map_index(t.from.0), t.from.1.clone()),
                 to: (map_index(t.to.0), t.to.1.clone()),
+                dir: t.dir,
             }));
     }
 }
