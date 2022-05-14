@@ -7,6 +7,7 @@ use std::collections::{HashMap, HashSet};
 pub fn generate(ast: Exp<Annot>) -> Machine {
     let mut m = Machine::new();
     assert!(generate_function(&ast, &mut m, 0, 1, &HashMap::new()));
+    m.simplify();
     m
 }
 
@@ -108,8 +109,8 @@ fn generate_match(
                     let a = m.push_state();
                     for sym in symbols {
                         m.push_transition(Transition {
-                            from: (s, Some(sym)),
-                            to: (a, None),
+                            from: (s, Some(sym.clone())),
+                            to: (a, Some(sym)),
                             dir: Direction::Stay,
                         });
                     }
