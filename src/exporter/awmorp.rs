@@ -52,12 +52,12 @@ pub fn export(machine: Machine) -> Result<String, String> {
 
     for t in transitions.iter() {
         result.push_str(&format!(
-            "{} {} {} {} {}",
+            "{} {} {} {} {}\n",
             convert_state(t.from.0),
             convert_symbol(&t.from.1)?,
-            convert_state(t.to.0),
             convert_symbol(&t.to.1)?,
             convert_direction(t.dir),
+            convert_state(t.to.0),
         ));
     }
 
