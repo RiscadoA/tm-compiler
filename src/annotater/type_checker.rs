@@ -276,15 +276,6 @@ fn define_builtin_functions() -> HashMap<String, Type> {
         },
     );
 
-    // abort :: tape -> halt
-    vars.insert(
-        "abort".to_owned(),
-        Type::Function {
-            arg: Box::new(Type::Tape),
-            ret: Box::new(Type::Halt),
-        },
-    );
-
     // set :: symbol -> tape -> tape
     vars.insert(
         "set".to_owned(),

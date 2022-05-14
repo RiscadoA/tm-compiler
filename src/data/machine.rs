@@ -41,33 +41,4 @@ impl Machine {
     pub fn push_transition(&mut self, transition: Transition) {
         self.transitions.push(transition);
     }
-
-    /// Merges another machine into this one.
-    pub fn merge(&mut self, other: &Machine, initial: usize, accept: usize, reject: usize) {
-        assert!(initial < self.state_count);
-        assert!(accept < self.state_count);
-        assert!(reject < self.state_count);
-
-        let extra_state_count = self.state_count - 3;
-        self.state_count += other.state_count - 3;
-
-        let map_index = |i: usize| {
-            if i == 0 {
-                initial
-            } else if i == 1 {
-                accept
-            } else if i == 2 {
-                reject
-            } else {
-                i + extra_state_count
-            }
-        };
-
-        self.transitions
-            .extend(other.transitions.iter().map(|t| Transition {
-                from: (map_index(t.from.0), t.from.1.clone()),
-                to: (map_index(t.to.0), t.to.1.clone()),
-                dir: t.dir,
-            }));
-    }
 }

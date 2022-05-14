@@ -6,6 +6,7 @@ use std::io::Read;
 mod annotater;
 mod data;
 mod exporter;
+mod generator;
 mod lexer;
 mod parser;
 mod simplifier;
@@ -198,7 +199,7 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<String, String> 
     }
 
     // Generate the turing machine from the AAST:
-    let machine = data::Machine::new();
+    let machine = generator::generate(ast);
 
     // Export the machine to the desired format.
     Ok(match args.format {
