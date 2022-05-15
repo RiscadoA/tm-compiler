@@ -1,5 +1,7 @@
-import 'flip_lib.tmc'
+# Flips all bits in the given binary number.
+# Alphabet used: '0' | '1'
 
+import 'flip_lib.tmc'
 Y f: t: match get t {
     x @ '0' | '1' > f (next (set (flip x) t)),
     any           > t,

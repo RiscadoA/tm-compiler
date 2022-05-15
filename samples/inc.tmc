@@ -1,2 +1,5 @@
+# Increments the binary input value by 1.
+# Alphabet used: '0' | '1' | '#'
+
 import 'std/math.tmc'
 inc

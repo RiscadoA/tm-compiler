@@ -1,4 +1,6 @@
 # Loops N times (where N is read from the input, in binary)
+# Alphabet used: '0' | '1' | '#'
+
 import 'std/check.tmc'
 import 'std/math.tmc'
 let

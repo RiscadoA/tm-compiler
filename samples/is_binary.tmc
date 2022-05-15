@@ -1,0 +1,7 @@
+# Checks if all symbols on the tape right until an empty symbol is found are binary digits.
+# Alphabet used: '0' | '1'
+
+import 'std/check.tmc'
+check_all (is ('0' | '1')) next (is '')
+    accept
+    reject

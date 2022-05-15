@@ -1,0 +1,36 @@
+# Adds two binary numbers from the input, separated by a +.
+# Alphabet used: '0' | '1' | '+'
+
+import 'std/check.tmc'
+let
+    # Increments the first number by one.
+    inc = t:
+        let t = prev (find '+' next t), in
+        let t = iter (is ('0' | '')) (t: prev (set '0' t)) t, in
+        let t = set '1' t, in
+        next (find '' prev t),
+
+    # Decrements the second number by one.
+    dec = t:
+        let t = prev (find '' next t), in
+        let t = iter (is '1') (t: prev (set '1' t)) t, in
+        let t = set '0' t, in
+        next (find '' prev t),
+
+    # Checks if the second number contains only 0.
+    check_zero = e1: e2: t: check_all
+        (is '0') next (is '')
+        (t: e1 (next (find '' prev (prev t))))
+        (t: e2 (next (find '' prev (prev t))))
+        (next (find '+' next t)),
+
+    # Removes the + and the second number, and then positions the cursor at the start of the first number.
+    finish = t:
+        let t = find '' next t, in
+        let t = iter (is '+') (t: prev (set '' t)) t, in
+        let t = prev (set '' t), in
+        next (find '' prev t),
+in
+    Y f: check_zero
+        finish
+        (t: f (inc (dec t)))

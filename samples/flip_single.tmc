@@ -1,2 +1,4 @@
+# Flips a single bit of the binary input.
+# Alphabet used: '0' | '1'
 import 'flip_lib.tmc'
 t: set (flip (get t)) t
