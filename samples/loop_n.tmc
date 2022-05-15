@@ -1,0 +1,14 @@
+# Loops N times (where N is read from the input, in binary)
+import 'std/check.tmc'
+import 'std/math.tmc'
+let
+    # Checks if the tape contains only 0
+    check_zero = e1: e2: t: check_all
+        (is '0') next (is '')
+        (t: e1 (next (find '' prev (prev t))))
+        (t: e2 (next (find '' prev (prev t))))
+        t,
+in
+    Y f: check_zero
+        (t: t)
+        (t: f (dec t))
