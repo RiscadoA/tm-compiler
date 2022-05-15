@@ -69,13 +69,19 @@ fn traverse(ast: Exp<Annot>, id: &str, sym: &Option<String>) -> Exp<Annot> {
                     exp,
                     arms: arms
                         .into_iter()
-                        .map(|arm| Arm {
-                            pat: match arm.pat {
-                                Pat::Union(pat) => Pat::Union(traverse(pat, id, sym)),
-                                Pat::Any => Pat::Any,
-                            },
-                            catch_id: arm.catch_id,
-                            exp: traverse(arm.exp, id, sym),
+                        .filter_map(|arm| {
+                            if arm.catch_id != Some(id.to_owned()) {
+                                Some(Arm {
+                                    pat: match arm.pat {
+                                        Pat::Union(pat) => Pat::Union(traverse(pat, id, sym)),
+                                        Pat::Any => Pat::Any,
+                                    },
+                                    catch_id: arm.catch_id,
+                                    exp: traverse(arm.exp, id, sym),
+                                })
+                            } else {
+                                None
+                            }
                         })
                         .collect(),
                 }

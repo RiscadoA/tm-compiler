@@ -24,7 +24,7 @@ fn traverse(exp: &Exp<Annot>, consumed: &mut HashSet<String>, is_ref: bool) -> R
             exp: match_exp,
             arms,
         } => {
-            traverse(match_exp, consumed, false)?;
+            traverse(match_exp, consumed, true)?;
             let initial_set = consumed.clone();
             for arm in arms.iter() {
                 let mut arm_set = initial_set.clone();
@@ -54,11 +54,7 @@ fn traverse(exp: &Exp<Annot>, consumed: &mut HashSet<String>, is_ref: bool) -> R
             };
 
             match (&**func_arg_t, &**func_ret_t) {
-                (Type::Tape, Type::Symbol) => {
-                    traverse(func, consumed, false)?;
-                    traverse(arg, consumed, true)?;
-                }
-                (Type::Tape, o) if o != &Type::Tape && o != &Type::Halt => {
+                (Type::Tape, o) if o != &Type::Tape && o != &Type::Halt && o != &Type::Symbol => {
                     return Err(format!(
                         "Function at {} receives tape as argument but returns {}, while only tape, symbol or halt are allowed",
                         func.1.1,

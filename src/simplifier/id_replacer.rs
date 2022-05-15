@@ -40,15 +40,10 @@ where
                     .collect(),
             },
 
-            Node::Function { arg, exp: func_exp } => {
-                let func_exp = if arg == id {
-                    func_exp
-                } else {
-                    Box::new(replace_id(*func_exp, id, exp))
-                };
-
-                Node::Function { arg, exp: func_exp }
-            }
+            Node::Function { arg, exp: func_exp } if arg != id => Node::Function {
+                arg,
+                exp: Box::new(replace_id(*func_exp, id, exp)),
+            },
 
             Node::Application { func, arg } => Node::Application {
                 func: Box::new(replace_id(*func, id, exp)),

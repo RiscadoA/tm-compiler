@@ -100,7 +100,7 @@ impl Machine {
 
             // Remove dead states.
             if let Some(state) =
-                (0..self.state_count).find(|&s| self.indeg(s) == 0 && s != 0 && s != 1)
+                (0..self.state_count).find(|&s| self.indeg(s) == 0 && s != 0 && s != 1 && s != 2)
             {
                 self.remove_state(state);
                 changed = true;

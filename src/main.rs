@@ -143,12 +143,19 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<String, String> 
         .map_err(|e| format!("Const checker error: {}", e))?;
 
     // Remove all non tape -> tape applications which can be removed before checking ownership rules.
-    fn ownership_transform(e: data::Exp<annotater::Annot>) -> data::Exp<annotater::Annot> {
-        let e = simplifier::applier::apply(e, |e| e.transform(&ownership_transform));
+    fn ownership_transform(
+        e: data::Exp<annotater::Annot>,
+        alphabet: &HashSet<String>,
+    ) -> data::Exp<annotater::Annot> {
+        let rec =
+            |e: data::Exp<annotater::Annot>| e.transform(&|e| ownership_transform(e, alphabet));
+        let e = simplifier::get_remover::remove_gets(e, alphabet);
+        let e = simplifier::match_mover::move_matches(e);
+        let e = simplifier::applier::apply(e, rec);
         let e = simplifier::trivial_remover::remove_trivial(e);
         e
     }
-    let ast = ast.transform(&ownership_transform);
+    let ast = ast.transform(&|e| ownership_transform(e, &alphabet));
 
     // Check for ownership errors and resolve the types of unions.
     annotater::ownership_checker::ownership_check(&ast)
@@ -180,11 +187,9 @@ fn compile(args: &Cli, lib: &HashMap<String, String>) -> Result<String, String> 
         let e = simplifier::applier::apply(e, rec);
         let e = simplifier::trivial_remover::remove_trivial(e);
         let e = simplifier::abort_spreader::spread_aborts(e);
-        let e = simplifier::match_mover::move_matches(e);
         let e = simplifier::matcher::match_const(e);
         let e = simplifier::pat_dedup::dedup_patterns(e);
         let e = simplifier::match_merger::merge_matches(e);
-        let e = simplifier::get_remover::remove_gets(e, alphabet);
         let e = simplifier::match_deduper::dedup_matches(e, rec);
         let e = simplifier::arm_merger::merge_arms(e);
         e
@@ -212,7 +217,12 @@ fn main() {
     let args = Cli::parse();
 
     // Load the standard library files.
-    let lib = load_lib!("std/bool.tmc", "std/iter.tmc", "std/check.tmc");
+    let lib = load_lib!(
+        "std/bool.tmc",
+        "std/iter.tmc",
+        "std/math.tmc",
+        "std/check.tmc"
+    );
 
     // Compile with the input arguments and the standard library.
     std::process::exit(match compile(&args, &lib) {
@@ -233,7 +243,12 @@ mod tests {
 
     #[test]
     fn test_compiler_tests() {
-        let lib = load_lib!("std/bool.tmc", "std/iter.tmc", "std/check.tmc");
+        let lib = load_lib!(
+            "std/bool.tmc",
+            "std/iter.tmc",
+            "std/math.tmc",
+            "std/check.tmc"
+        );
 
         // Compile every program in the tests directory.
         for entry in std::fs::read_dir("tests").unwrap() {
