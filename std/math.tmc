@@ -1,0 +1,45 @@
+import 'std/iter.tmc'
+let
+    # Defines math functions for binary numbers. All of these functions move the tape so that
+    # the current position is the leftmost bit of the result.
+
+    # Placeholder symbol used by the functions below for intermediate operations.
+    placeholder ? '#',
+
+    # Increments or decrements a binary number. If the number overflows, it wraps around.
+    # - t   (tape) - Tape pointing to first element of the binary number.
+    # > ret (tape) - Resulting tape.
+    inc_dec = a: b: t:
+        # Replace the first digit with the placeholder and remember the old symbol.
+        let s = get t, in
+        let t = next (set placeholder t), in
+
+        # Iterate until the end of the number.
+        let t = prev (iter (isnt (a | b)) next t), in
+        
+        # Now find the last zero, replacing every one in the way with a zero.
+        let t = iter (is (b | placeholder)) (t: prev (set b t)) t, in
+
+        # Check if we reached the first digit.
+        match get t {
+            # A zero was found, so we didn't reach the first digit.
+            # Go back to the first digit and replace the placeholder with the old symbol.
+            b > set s (iter (is placeholder) prev (set a t)),
+
+            # The first digit was reached.
+            placeholder > match s {
+                a > set b t,
+                b > set a t,
+            },
+        },
+
+    # Increments a binary number. If the number overflows, it wraps around.
+    # - t   (tape) - Tape pointing to first element of the binary number.
+    # > ret (tape) - Resulting tape.
+    inc = t: inc_dec '1' '0' t,
+
+    # Decrements a binary number. If the number overflows, it wraps around.
+    # - t   (tape) - Tape pointing to first element of the binary number.
+    # > ret (tape) - Resulting tape.
+    dec = t: inc_dec '0' '1' t,
+in

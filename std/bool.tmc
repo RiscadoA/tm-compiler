@@ -36,6 +36,12 @@ let
         any > false,
     },
 
+    # Negation of is.
+    # - pat (union)  - The union of symbols.
+    # - x   (symbol) - The symbol to check.
+    # > ret (bool)   - False if the symbol is part of the union, true otherwise.
+    isnt = pat: x: not (is pat x),
+
     # Asserts that the given boolean is true, and if it is, returns the given tape.
     # - b   (bool) - The boolean to assert.
     # - t   (tape) - The tape to return if the boolean is true.
